@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🕵️‍♂️ RustFS Forensic Audit System | Innoura VisionGuard360</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+            background: linear-gradient(135deg, #0f0f1e 0%, #1a1a2e 100%);
+            color: #e0e0e0;
+            line-height: 1.6;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #444;
+            padding-bottom: 15px;
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 600;
+            background: linear-gradient(90deg, #00d4ff, #0080ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .status-badge {
+            padding: 8px 16px;
+            background: #1c4d5f;
+            border-left: 3px solid #00d4ff;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .status-badge.healthy {
+            background: #1c5f3f;
+            border-left-color: #00ff88;
+        }
+
+        .status-badge.error {
+            background: #5f1c1c;
+            border-left-color: #ff0040;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .panel {
+            background: rgba(30, 30, 40, 0.8);
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .panel h2 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #00d4ff;
+        }
+
+        input[type="text"],
+        textarea {
+            width: 100%;
+            padding: 12px;
+            background: #141420;
+            border: 1px solid #444;
+            border-radius: 4px;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            resize: vertical;
+            transition: border-color 0.2s;
+        }
+
+        input[type="text"]:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #00d4ff;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.2);
+        }
+
+        button {
+            display: inline-block;
+            padding: 12px 24px;
+            background: linear-gradient(90deg, #0070f3, #0055c0);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 14px;
+            transition: opacity 0.2s;
+            margin-top: 12px;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        button.secondary {
+            background: #444;
+            color: #e0e0e0;
+        }
+
+        button.secondary:hover {
+            background: #555;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .console {
+            background: #000;
+            border: 1px solid #222;
+            border-radius: 4px;
+            padding: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: #00ff00;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .console .error {
+            color: #ff6b6b;
+        }
+
+        .console .warning {
+            color: #ffa500;
+        }
+
+        .console .info {
+            color: #00ff00;
+        }
+
+        .results-container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+        }
+
+        .result-item {
+            background: #242430;
+            border-left: 3px solid #0070f3;
+            padding: 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .result-item:hover {
+            background: #2d2d35;
+        }
+
+        .result-item.selected {
+            background: #2d3550;
+            border-left-color: #00d4ff;
+        }
+
+        .result-item-header {
+            font-weight: 600;
+            color: #00d4ff;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .result-item-details {
+            font-size: 13px;
+            color: #aaa;
+            margin-bottom: 8px;
+        }
+
+        .result-item-urls {
+            display: flex;
+            gap: 10px;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+
+        .result-item-urls a {
+            color: #0070f3;
+            text-decoration: none;
+            word-break: break-all;
+            padding: 4px 8px;
+            background: #1a1a22;
+            border-radius: 2px;
+            transition: background 0.2s;
+        }
+
+        .result-item-urls a:hover {
+            background: #2a2a32;
+        }
+
+        .video-player {
+            width: 100%;
+            background: #000;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+
+        video {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .player-controls {
+            padding: 10px;
+            background: #1a1a22;
+            font-size: 12px;
+            color: #aaa;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid #444;
+            border-top-color: #0070f3;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .empty-state svg {
+            width: 48px;
+            height: 48px;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .metric-card {
+            background: #242430;
+            padding: 15px;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 24px;
+            font-weight: 600;
+            color: #00d4ff;
+        }
+
+        .metric-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        @media (max-width: 1024px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <div>
+            <h1>🕵️‍♂️ RustFS Forensic Audit System</h1>
+            <p style="font-size: 13px; color: #666; margin-top: 5px;">
+                Powered by Innoura VisionGuard360 | Gemini Nano + DuckDB/Ray backend
+            </p>
+        </div>
+        <div class="status-badge healthy" id="statusBadge">
+            <span id="statusText">● Initializing...</span>
+        </div>
+    </header>
+
+    <div class="layout">
+        <!-- LEFT PANEL: Query Input & Controls -->
+        <div class="panel">
+            <h2>🔍 Natural Language Search</h2>
+            <textarea 
+                id="auditInput" 
+                placeholder="e.g., Show all truck entries where breach_detected is true&#10;Or: Find video segments with object_type = 'person' between timestamps 1000 and 5000"
+                rows="4"
+            ></textarea>
+            <div class="button-group">
+                <button onclick="runAuditSearch()" id="searchBtn">🚀 Execute Query</button>
+                <button class="secondary" onclick="clearInput()">Clear</button>
+            </div>
+
+            <h2 style="margin-top: 20px;">📊 System Status</h2>
+            <div class="console" id="statusConsole" style="max-height: 200px;">
+> Connecting to gateway...
+            </div>
+
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-value" id="mediaCount">-</div>
+                    <div class="metric-label">Media Pairs</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="queryTime">-</div>
+                    <div class="metric-label">Query Time (ms)</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="resultCount">-</div>
+                    <div class="metric-label">Results</div>
+                </div>
+            </div>
+
+            <button class="secondary" onclick="syncInventory()" style="width: 100%; margin-top: 15px;">
+                🔄 Resync Inventory
+            </button>
+        </div>
+
+        <!-- MIDDLE PANEL: SQL Query Analysis -->
+        <div class="panel">
+            <h2>🗂️ Generated SQL Query</h2>
+            <div class="console" id="sqlConsole" style="max-height: 150px;">
+> Waiting for search input...
+            </div>
+
+            <h2 style="margin-top: 20px;">📋 Query Details</h2>
+            <div style="font-size: 13px; color: #aaa;">
+                <div style="margin-bottom: 10px;">
+                    <strong>Query Hash:</strong> <code id="queryHash">-</code>
+                </div>
+                <div style="margin-bottom: 10px;">
+                    <strong>Status:</strong> <span id="queryStatus">idle</span>
+                </div>
+                <div>
+                    <strong>Timestamp:</strong> <code id="queryTimestamp">-</code>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FULL WIDTH: Results & Video Player -->
+    <div class="panel full-width">
+        <h2>🎬 Matching Forensic Footage</h2>
+        <div class="results-container" id="resultsContainer">
+            <div class="empty-state">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 1 0 4 0m0 0a2 2 0 1 0-4 0"></path>
+                </svg>
+                <p>No search results yet.<br><small>Enter a query above to retrieve matching video segments.</small></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- FULL WIDTH: Video Player -->
+    <div class="panel full-width" id="playerPanel" style="display: none;">
+        <h2>▶️ Video Playback</h2>
+        <div class="video-player">
+            <video id="videoPlayer" controls>
+                Your browser does not support the HTML5 video tag.
+            </video>
+        </div>
+        <div class="player-controls">
+            <strong id="playerTitle">Ready</strong>
+            <p id="playerDetails" style="font-size: 12px; margin-top: 5px; color: #666;"></p>
+        </div>
+    </div>
+</div>
+
+<script>
+// ========================================================================
+// Global State & Configuration
+// ========================================================================
+
+const API_BASE = "http://localhost:8000";
+let selectedResult = null;
+let currentResults = [];
+
+// ========================================================================
+// Utility Functions
+// ========================================================================
+
+function log(message, type = "info") {
+    const console = document.getElementById("statusConsole");
+    const timestamp = new Date().toLocaleTimeString();
+    const line = `[${timestamp}] ${message}`;
+    const div = document.createElement("div");
+    div.className = type;
+    div.textContent = line;
+    console.appendChild(div);
+    console.scrollTop = console.scrollHeight;
+}
+
+function setStatus(text, isHealthy = true) {
+    document.getElementById("statusText").textContent = `● ${text}`;
+    document.getElementById("statusBadge").className = isHealthy ? "status-badge healthy" : "status-badge error";
+}
+
+// Compute SHA256 hash (simplified, for display only)
+function quickHash(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash;
+    }
+    return Math.abs(hash).toString(16).substring(0, 8).toUpperCase();
+}
+
+// ========================================================================
+// Gemini Nano Integration (Browser-Local NLU)
+// ========================================================================
+
+async function generateSqlWithGeminiNano(question) {
+    // Attempt to use Gemini Nano if available
+    if (!window.ai || !window.ai.languageModel) {
+        // Fallback: simple heuristic transformation
+        log("⚠️  Gemini Nano not available; using fallback SQL generation", "warning");
+        return fallbackSqlGeneration(question);
+    }
+
+    try {
+        const session = await window.ai.languageModel.create({
+            systemPrompt: `You are a SQL query generator. Convert natural language questions to DuckDB SQL targeting the 'video_segments' table.
+
+Available columns: camera_id (text), start_ms (bigint), end_ms (bigint), duration_ms (int), s3_key (text), size_bytes (bigint), detections (text), complete (boolean).
+
+Rules:
+1. Only output the SQL query string, nothing else
+2. Always use SELECT ... FROM video_segments
+3. For timestamp ranges, use "WHERE start_ms >= X AND end_ms <= Y"
+4. For text matching, use ILIKE for partial matches in JSON text
+5. Always order by start_ms DESC LIMIT 100
+6. No markdown, no explanations
+
+Example input: "Show truck entries where breach was detected"
+Example output: SELECT * FROM video_segments WHERE detections ILIKE '%truck%' ORDER BY start_ms DESC LIMIT 100`
+        });
+
+        const result = await session.prompt(`Convert to SQL: "${question}"`);
+        let generatedSql = result.trim().replace(/```sql|```/g, "").trim();
+        // Ensure standard formatting if model output is unconventional
+        if (!generatedSql.toLowerCase().includes("order by")) {
+            // Strip any existing limit to cleanly append order by + limit
+            generatedSql = generatedSql.replace(/\s+limit\s+\d+/i, "");
+            generatedSql += " ORDER BY start_ms DESC LIMIT 100";
+        }
+        return generatedSql;
+    } catch (err) {
+        log(`Gemini Nano error: ${err.message}`, "warning");
+        return fallbackSqlGeneration(question);
+    }
+}
+
+function fallbackSqlGeneration(question) {
+    // Simple heuristic SQL generation for fallback
+    const q = question.toLowerCase();
+    
+    let sql = "SELECT * FROM video_segments WHERE 1=1";
+    
+    // Detect breach queries
+    if (q.includes("breach")) {
+        sql += " AND detections ILIKE '%breach%'";
+    }
+    
+    // Detect object type queries
+    if (q.includes("truck")) sql += " AND detections ILIKE '%truck%'";
+    else if (q.includes("person")) sql += " AND detections ILIKE '%person%'";
+    else if (q.includes("car")) sql += " AND detections ILIKE '%car%'";
+    
+    // Detect timestamp ranges
+    const tsMatch = q.match(/(\d+)\s*(?:to|and)\s*(\d+)/);
+    if (tsMatch) {
+        sql += ` AND start_ms >= ${parseInt(tsMatch[1])} AND end_ms <= ${parseInt(tsMatch[2])}`;
+    }
+    
+    // Add ORDER BY and LIMIT to fetch newest rows and prevent crashing
+    sql += " ORDER BY start_ms DESC LIMIT 100";
+    
+    return sql;
+}
+
+// ========================================================================
+// Query Execution
+// ========================================================================
+
+async function runAuditSearch() {
+    const textPrompt = document.getElementById("auditInput").value.trim();
+    
+    if (!textPrompt) {
+        log("⚠️  Please enter a search query", "warning");
+        return;
+    }
+
+    const searchBtn = document.getElementById("searchBtn");
+    searchBtn.disabled = true;
+    searchBtn.textContent = "⏳ Generating SQL...";
+
+    try {
+        // Step 1: Generate SQL via Gemini Nano
+        log("🤖 Translating intent on local GPU via Gemini Nano...");
+        const sqlQuery = await generateSqlWithGeminiNano(textPrompt);
+        
+        document.getElementById("sqlConsole").textContent = `> ${sqlQuery}`;
+        document.getElementById("queryHash").textContent = quickHash(sqlQuery);
+        document.getElementById("queryTimestamp").textContent = new Date().toISOString();
+        document.getElementById("queryStatus").textContent = "executing";
+
+        log(`✓ Generated SQL (hash: ${quickHash(sqlQuery)})`);
+
+        // Step 2: Send to backend
+        searchBtn.textContent = "⏳ Querying backend...";
+        const startTime = performance.now();
+
+        const response = await fetch(`${API_BASE}/api/audit?sql_query=${encodeURIComponent(sqlQuery)}`);
+        const endTime = performance.now();
+        const queryTime = (endTime - startTime).toFixed(2);
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        log(`✓ Query completed in ${queryTime}ms | ${Array.isArray(data) ? data.length : 0} results`);
+
+        // Step 3: Display results
+        displayResults(Array.isArray(data) ? data : data.results || []);
+        document.getElementById("queryTime").textContent = queryTime;
+        document.getElementById("resultCount").textContent = (Array.isArray(data) ? data.length : 0).toString();
+        document.getElementById("queryStatus").textContent = "success";
+
+    } catch (err) {
+        log(`❌ Error: ${err.message}`, "error");
+        document.getElementById("queryStatus").textContent = "error";
+        document.getElementById("sqlConsole").textContent += `\n\n[ERROR] ${err.message}`;
+    } finally {
+        searchBtn.disabled = false;
+        searchBtn.textContent = "🚀 Execute Query";
+    }
+}
+
+function displayResults(results) {
+    const container = document.getElementById("resultsContainer");
+    currentResults = results;
+
+    if (!results || results.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <p>No results found. Try adjusting your search query.</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = results.map((item, idx) => `
+        <div class="result-item" onclick="selectResult(${idx})">
+            <div class="result-item-header">
+                <span>🎥 ${item.video_id}</span>
+                <span style="font-size: 12px; color: #666;">Seg #${idx + 1}</span>
+            </div>
+            <div class="result-item-details">
+                <div>⏱️  <strong>Timestamp:</strong> ${item.start_ts} → ${item.end_ts}</div>
+            </div>
+            <div class="result-item-urls">
+                <a href="${item.video_segment_url}" title="Video segment (.ts)" target="_blank">📹 Video</a>
+                <a href="${API_BASE}/decompress?file=${encodeURIComponent(item.zstd_vtt_url.split('/').pop())}" 
+                   title="Decompressed VTT overlay" target="_blank">📄 VTT</a>
+            </div>
+        </div>
+    `).join("");
+}
+
+function selectResult(idx) {
+    selectedResult = idx;
+    const items = document.querySelectorAll(".result-item");
+    items.forEach((item, i) => {
+        item.classList.toggle("selected", i === idx);
+    });
+
+    const item = currentResults[idx];
+    const playerPanel = document.getElementById("playerPanel");
+    const videoPlayer = document.getElementById("videoPlayer");
+    const playerTitle = document.getElementById("playerTitle");
+    const playerDetails = document.getElementById("playerDetails");
+
+    playerPanel.style.display = "block";
+    playerTitle.textContent = `${item.video_id} (${item.start_ts}–${item.end_ts})`;
+    
+    // Generate init.mp4 URL from the same directory as the segment
+    const initUrl = item.video_segment_url.substring(0, item.video_segment_url.lastIndexOf('/')) + '/init.mp4';
+    
+    // Generate bash command to combine init segment + media segment into a playable mp4
+    const cliCmd = `curl -s "${initUrl}" "${item.video_segment_url}" > segment.mp4 && open segment.mp4`;
+
+    playerDetails.innerHTML = `
+        <div style="margin-bottom:10px;">
+            <a href="${item.video_segment_url}" target="_blank" style="color:var(--accent-primary);">[Raw .m4s]</a> | 
+            <a href="${item.zstd_vtt_url}" target="_blank" style="color:var(--accent-primary);">[Raw .vtt.zst]</a>
+        </div>
+        <div style="background:var(--bg-secondary); padding:10px; border-radius:4px; border:1px solid #444;">
+            <strong style="color:#ffcc00;">⚠️ Browser Playback Failed? (CORS / Fragmented MP4)</strong><br>
+            Browsers cannot play raw .m4s fragments directly because they lack the 'moov' header (init.mp4).<br>
+            Copy and paste this into your Mac terminal to instantly combine and play the video:
+            <code style="display:block; margin-top:8px; padding:10px; background:#000; color:#0f0; user-select:all; border-radius:4px;">${cliCmd}</code>
+        </div>
+    `;
+
+    // Route video request through the local Rust proxy to combine init.mp4 and bypass CORS
+    videoPlayer.src = `${API_BASE}/proxy/video?url=${encodeURIComponent(item.video_segment_url)}`;
+}
+
+function clearInput() {
+    document.getElementById("auditInput").value = "";
+    document.getElementById("sqlConsole").textContent = "> Waiting for search input...";
+}
+
+// ========================================================================
+// System Operations
+// ========================================================================
+
+async function syncInventory() {
+    log("🔄 Syncing inventory from RustFS...");
+    try {
+        const response = await fetch(`${API_BASE}/api/sync`);
+        const data = await response.json();
+        log(`✓ Inventory synced: ${data.pairs_synchronized} media pairs`);
+        document.getElementById("mediaCount").textContent = data.pairs_synchronized;
+    } catch (err) {
+        log(`❌ Sync failed: ${err.message}`, "error");
+    }
+}
+
+async function checkHealth() {
+    try {
+        const response = await fetch(`${API_BASE}/health`);
+        const data = await response.json();
+        
+        if (data.status === "healthy") {
+            setStatus("Connected & Healthy", true);
+            log(`✓ Gateway healthy | ${data.media_pairs_count} media pairs indexed`);
+            document.getElementById("mediaCount").textContent = data.media_pairs_count;
+        } else {
+            setStatus("Degraded", false);
+            log("⚠️  Gateway in degraded state", "warning");
+        }
+    } catch (err) {
+        setStatus("Disconnected", false);
+        log(`❌ Cannot reach gateway: ${err.message}`, "error");
+    }
+}
+
+// ========================================================================
+// Initialization
+// ========================================================================
+
+document.addEventListener("DOMContentLoaded", async () => {
+    log("🚀 RustFS Forensic Audit System initialized");
+    log("📍 Gateway URL: " + API_BASE);
+    
+    // Check system health
+    await checkHealth();
+    
+    // Periodic health checks
+    setInterval(checkHealth, 30000);
+});
+</script>
+</body>
+</html>

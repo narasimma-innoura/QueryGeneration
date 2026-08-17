@@ -1,0 +1,20 @@
+[
+  {
+    "video_id": "b2dd059d-1ab8-4033-a9e4-d9405a79eb9a",
+    "start_ts": 1000,
+    "end_ts": 5000,
+    "video_segment_url": "http://54.204.98.59:10011/visionguard-playback/live/b2dd059d-1ab8-4033-a9e4-d9405a79eb9a/b2dd059d-1ab8-4033-a9e4-d9405a79eb9a_1000_5000.ts",
+    "zstd_vtt_url": "http://54.204.98.59:10011/visionguard-playback/live/b2dd059d-1ab8-4033-a9e4-d9405a79eb9a/b2dd059d-1ab8-4033-a9e4-d9405a79eb9a_1000_5000.vtt.zst",
+    "object_type": "person, helmet",
+    "breach_detected": true
+  },
+  {
+    "video_id": "cc4c94d6-f738-4565-aed0-da6b59dcd385",
+    "start_ts": 5000,
+    "end_ts": 9000,
+    "video_segment_url": "http://54.204.98.59:10011/visionguard-playback/live/cc4c94d6-f738-4565-aed0-da6b59dcd385/cc4c94d6-f738-4565-aed0-da6b59dcd385_5000_9000.ts",
+    "zstd_vtt_url": "http://54.204.98.59:10011/visionguard-playback/live/cc4c94d6-f738-4565-aed0-da6b59dcd385/cc4c94d6-f738-4565-aed0-da6b59dcd385_5000_9000.vtt.zst",
+    "object_type": "truck",
+    "breach_detected": false
+  }
+]

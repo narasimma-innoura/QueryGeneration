@@ -1,0 +1,1 @@
+[{"video_id": "cam01", "start_ts": 1000, "end_ts": 5000, "video_segment_url": "/mnt/rustfs/streams_pool/cam01_1000_5000.ts", "zstd_vtt_url": "/mnt/rustfs/streams_pool/cam01_1000_5000.vtt.zst", "object_type": "person, helmet", "breach_detected": true}]

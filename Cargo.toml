@@ -1,0 +1,56 @@
+[package]
+name = "rustfs_video_audit_engine"
+version = "1.0.0"
+edition = "2021"
+authors = ["Innoura Technologies <dev@innoura.tech>"]
+description = "High-performance RustFS + Smallpond forensic video audit gateway with formal safety proofs"
+license = "Apache-2.0"
+repository = "https://github.com/innoura/rustfs-audit-gateway"
+
+[dependencies]
+# Async runtime
+tokio = { version = "1.40", features = ["full"] }
+
+# HTTP framework
+axum = "0.7"
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors", "fs"] }
+hyper = "1"
+reqwest = { version = "0.12", features = ["json", "stream"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Compression (Zstandard)
+zstd = "0.13"
+
+# Regex for SQL allowlist validation
+regex = "1.10"
+
+# Fast directory traversal
+walkdir = "2.5"
+
+# Time utilities
+chrono = "0.4"
+
+# Logging (structured output)
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"] }
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Optional: Parquet support (if direct Rust reads needed)
+# parquet = "51.0"
+# arrow = "51.0"
+
+[dev-dependencies]
+tokio-test = "0.4"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true

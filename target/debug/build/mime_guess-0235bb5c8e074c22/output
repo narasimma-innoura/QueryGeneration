@@ -1,0 +1,1 @@
+cargo:rustc-env=MIME_TYPES_GENERATED_PATH=/Users/macbook/Downloads/files (2)/target/debug/build/mime_guess-0235bb5c8e074c22/out/mime_types_generated.rs
