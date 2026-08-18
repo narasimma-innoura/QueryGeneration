@@ -57,6 +57,28 @@ struct AppState {
     storage_root: Arc<PathBuf>,
     sql_allowlist: Arc<Regex>,
     inventory_cache: Arc<tokio::sync::RwLock<Vec<MediaPair>>>,
+    python_cmd: Arc<String>,
+}
+
+/// Resolve a working Python 3 interpreter.
+///
+/// `python3` is the natural first choice (Linux/macOS convention), but on Windows
+/// it is very commonly just the Microsoft Store "App execution alias" stub, which
+/// exists on PATH even when no real interpreter is installed and exits non-zero
+/// with a "Python was not found" message instead of actually running anything.
+/// `python` and the `py` launcher are checked as fallbacks for that platform.
+fn resolve_python_interpreter() -> Option<String> {
+    for candidate in ["python3", "python", "py"] {
+        if let Ok(out) = std::process::Command::new(candidate)
+            .arg("--version")
+            .output()
+        {
+            if out.status.success() {
+                return Some(candidate.to_string());
+            }
+        }
+    }
+    None
 }
 
 /// MediaPair: structural twin of video segment + VTT overlay
@@ -68,6 +90,13 @@ struct MediaPair {
     end_ts: i64,
     video_segment_url: String,
     zstd_vtt_url: String,
+    // Per-frame bounding-box JSON (frames[].boxes[].bbox/label/score/color)
+    // for overlaying detections on the video player. Without a matching
+    // field here, serde silently drops this key during deserialization even
+    // though run_smallpond_query.py includes it — the browser would receive
+    // every other field but never the one it needs to draw anything.
+    #[serde(default)]
+    detections: Option<serde_json::Value>,
 }
 
 /// DecompressParams: validated client request
@@ -273,44 +302,142 @@ async fn decompress_vtt_handler(
 // PROXY HANDLER (Remuxes fragmented MP4 and bypasses CORS)
 // ============================================================================
 
-async fn proxy_video_handler(Query(params): Query<ProxyParams>) -> impl IntoResponse {
+/// Parse a single-range "bytes=start-end" Range header value (RFC 7233).
+/// Only the single-range form is supported (multipart ranges are rare for
+/// video and browsers don't send them); anything else falls back to `None`,
+/// which callers treat as "serve the whole body".
+fn parse_range_header(range: &str, total_len: usize) -> Option<(usize, usize)> {
+    let spec = range.strip_prefix("bytes=")?;
+    let (start_str, end_str) = spec.split_once('-')?;
+    let total_len = total_len as u64;
+
+    let (start, end) = if start_str.is_empty() {
+        // "bytes=-N" — last N bytes
+        let suffix_len: u64 = end_str.parse().ok()?;
+        let start = total_len.saturating_sub(suffix_len);
+        (start, total_len.saturating_sub(1))
+    } else {
+        let start: u64 = start_str.parse().ok()?;
+        let end = if end_str.is_empty() {
+            total_len.saturating_sub(1)
+        } else {
+            end_str.parse::<u64>().ok()?.min(total_len.saturating_sub(1))
+        };
+        (start, end)
+    };
+
+    if start > end || start >= total_len {
+        return None;
+    }
+    Some((start as usize, end as usize))
+}
+
+async fn proxy_video_handler(
+    Query(params): Query<ProxyParams>,
+    request_headers: header::HeaderMap,
+) -> impl IntoResponse {
     let segment_url = params.url;
-    
+
     // Derive init.mp4 url
     let last_slash = match segment_url.rfind('/') {
         Some(idx) => idx,
         None => return (StatusCode::BAD_REQUEST, "Invalid URL").into_response(),
     };
     let init_url = format!("{}/init.mp4", &segment_url[..last_slash]);
-    
-    // Fetch init.mp4
+
+    // Fetch init.mp4. `reqwest::get` only returns Err for network-level
+    // failures (DNS, connection refused, timeout) — a 404/500 upstream
+    // response still comes back as Ok(response). Without an explicit status
+    // check here, a missing init.mp4 (e.g. a `live/` segment whose init
+    // segment hasn't been written yet) silently concatenated a 404 error
+    // page into the "video" instead of failing loudly, producing a
+    // corrupt file the browser rejected with no diagnostic as to why.
     let init_resp = match reqwest::get(&init_url).await {
-        Ok(r) => match r.bytes().await {
+        Ok(r) if r.status().is_success() => match r.bytes().await {
             Ok(b) => b,
-            Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to read init.mp4 bytes").into_response(),
+            Err(e) => return (
+                StatusCode::BAD_GATEWAY,
+                format!("Failed to read init.mp4 body from {}: {}", init_url, e),
+            ).into_response(),
         },
-        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to fetch init.mp4").into_response(),
+        Ok(r) => return (
+            StatusCode::BAD_GATEWAY,
+            format!("init.mp4 not found at {} (upstream returned HTTP {}) — this segment's init segment may not have been written yet", init_url, r.status()),
+        ).into_response(),
+        Err(e) => return (
+            StatusCode::BAD_GATEWAY,
+            format!("Failed to reach {}: {}", init_url, e),
+        ).into_response(),
     };
-    
-    // Fetch segment.m4s
+
+    // Fetch segment.m4s — same status-check reasoning as init.mp4 above.
     let seg_resp = match reqwest::get(&segment_url).await {
-        Ok(r) => match r.bytes().await {
+        Ok(r) if r.status().is_success() => match r.bytes().await {
             Ok(b) => b,
-            Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to read segment bytes").into_response(),
+            Err(e) => return (
+                StatusCode::BAD_GATEWAY,
+                format!("Failed to read segment body from {}: {}", segment_url, e),
+            ).into_response(),
         },
-        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to fetch segment").into_response(),
+        Ok(r) => return (
+            StatusCode::BAD_GATEWAY,
+            format!("Segment not found at {} (upstream returned HTTP {})", segment_url, r.status()),
+        ).into_response(),
+        Err(e) => return (
+            StatusCode::BAD_GATEWAY,
+            format!("Failed to reach {}: {}", segment_url, e),
+        ).into_response(),
     };
-    
+
     // Combine them into a valid MP4
     let mut combined = Vec::with_capacity(init_resp.len() + seg_resp.len());
     combined.extend_from_slice(&init_resp);
     combined.extend_from_slice(&seg_resp);
-    
+    let total_len = combined.len();
+
+    // Honor Range requests (RFC 7233). This used to advertise
+    // `Accept-Ranges: bytes` without actually implementing it — every
+    // request got the full 200 body regardless of a Range header. Browsers
+    // trust that header and issue real byte-range requests when seeking or
+    // probing a <video> source; getting the wrong bytes back for a ranged
+    // request manifests as a decode error / playback failure client-side,
+    // which is what was happening here even though the underlying MP4 the
+    // proxy builds is perfectly valid.
+    let range_header = request_headers
+        .get(header::RANGE)
+        .and_then(|v| v.to_str().ok());
+
+    if let Some(range) = range_header.and_then(|r| parse_range_header(r, total_len)) {
+        let (start, end) = range;
+        let slice = combined[start..=end].to_vec();
+
+        let mut headers = header::HeaderMap::new();
+        headers.insert(header::CONTENT_TYPE, "video/mp4".parse().unwrap());
+        headers.insert(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*".parse().unwrap());
+        headers.insert(header::ACCEPT_RANGES, "bytes".parse().unwrap());
+        // The browser keys its HTTP cache on this exact URL (it's the same
+        // /proxy/video?url=... every time a given segment is selected). Any
+        // response served here without this header risks getting reused by
+        // the browser on a later attempt even after this handler's logic
+        // changes server-side — which is exactly why the fixed Range
+        // handling above wouldn't have been enough on its own to stop a
+        // previously-cached broken response from reappearing.
+        headers.insert(header::CACHE_CONTROL, "no-store".parse().unwrap());
+        headers.insert(
+            header::CONTENT_RANGE,
+            format!("bytes {}-{}/{}", start, end, total_len).parse().unwrap(),
+        );
+        headers.insert(header::CONTENT_LENGTH, slice.len().to_string().parse().unwrap());
+
+        return (StatusCode::PARTIAL_CONTENT, headers, slice).into_response();
+    }
+
     let mut headers = header::HeaderMap::new();
     headers.insert(header::CONTENT_TYPE, "video/mp4".parse().unwrap());
     headers.insert(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*".parse().unwrap());
     headers.insert(header::ACCEPT_RANGES, "bytes".parse().unwrap());
-    
+    headers.insert(header::CACHE_CONTROL, "no-store".parse().unwrap());
+
     (StatusCode::OK, headers, combined).into_response()
 }
 
@@ -338,11 +465,40 @@ async fn execute_smallpond_audit(
         }
     };
 
-    // Step 2: Execute Smallpond subprocess with validated query
-    let output = std::process::Command::new("python3")
-        .arg("scripts/run_smallpond_query.py")
+    // Step 2: Execute Smallpond subprocess with validated query.
+    // tokio::process::Command (not std::process::Command) keeps this off the
+    // async worker thread; kill_on_drop + a hard timeout stop a hung remote
+    // database query from hanging the request and leaking the child process
+    // forever (observed: a slow/unresponsive Postgres backend left orphaned
+    // python.exe processes running indefinitely with no way to reap them).
+    //
+    // 60s here vs. the Python script's own 45s Postgres statement_timeout:
+    // this must stay comfortably above that inner timeout, or a slow-but-
+    // legitimate query gets killed by this outer timeout (a confusing 504
+    // with no query_hash/detail) instead of by Postgres itself, which
+    // returns a clean, specific "canceling statement due to statement
+    // timeout" error. This is purely a backstop for the inner timeout
+    // failing to fire (e.g. a hung TCP connection, not a running query).
+    let mut cmd = tokio::process::Command::new(state.python_cmd.as_str());
+    cmd.arg("scripts/run_smallpond_query.py")
         .arg(&validated_sql)
-        .output();
+        .kill_on_drop(true);
+
+    let output = match tokio::time::timeout(std::time::Duration::from_secs(60), cmd.output()).await {
+        Ok(result) => result,
+        Err(_) => {
+            return (
+                StatusCode::GATEWAY_TIMEOUT,
+                Json(ErrorResponse {
+                    status: "error".to_string(),
+                    code: 504,
+                    message: "Smallpond query timed out after 60s (remote database unresponsive); subprocess killed".to_string(),
+                    timestamp: Utc::now().to_rfc3339(),
+                }),
+            )
+                .into_response();
+        }
+    };
 
     match output {
         Ok(out) => {
@@ -361,12 +517,23 @@ async fn execute_smallpond_audit(
             }
 
             let stdout_str = String::from_utf8_lossy(&out.stdout).into_owned();
-            
+
+            // Same reasoning as /proxy/video's Cache-Control fix: identical
+            // natural-language questions produce identical generated SQL,
+            // which produces the identical /api/audit?sql_query=... URL —
+            // without an explicit no-store here, a browser or intermediate
+            // cache could keep replaying an old response for that URL (e.g.
+            // from before the per-camera diversification rewrite in
+            // run_smallpond_query.py existed) instead of hitting the backend
+            // again, making a real server-side fix look like it did nothing.
+            let no_store = [(header::CACHE_CONTROL, "no-store")];
+
             // Attempt JSON parse for structured response
             match serde_json::from_str::<Vec<MediaPair>>(&stdout_str) {
-                Ok(results) => (StatusCode::OK, Json(results)).into_response(),
+                Ok(results) => (StatusCode::OK, no_store, Json(results)).into_response(),
                 Err(_) => (
                     StatusCode::OK,
+                    no_store,
                     axum::http::Response::builder()
                         .header(header::CONTENT_TYPE, "text/plain")
                         .body(axum::body::Body::from(stdout_str))
@@ -484,6 +651,10 @@ async fn sync_inventory(State(state): State<AppState>) -> Response {
                 end_ts: key.2,
                 video_segment_url: video_path,
                 zstd_vtt_url: overlay_path.clone(),
+                // This path builds MediaPairs from a filesystem scan of
+                // paired video/VTT files, not from a video_segments query —
+                // there's no detections JSON available here.
+                detections: None,
             });
         }
     }
@@ -550,16 +721,27 @@ async fn sync_inventory(State(state): State<AppState>) -> Response {
 
 #[tokio::main]
 async fn main() {
+    // Load local development config (e.g. DATABASE_URL) from a git-ignored .env
+    // file if present. Missing file is fine — real deployments set real env vars.
+    if dotenvy::dotenv().is_ok() {
+        println!("📄 Loaded configuration from .env");
+    }
+
     println!(
         "🏗️  Innoura RustFS Audit Gateway | VisionGuard360 Integration"
     );
     println!("   Formal Safety Proofs: Lean 4.30.0+");
     println!("   Invariants: PathTraversal, DecompressionBounds, SQLInjection Prevention\n");
 
-    // Startup validation
+    // Startup validation: create the storage root if this is a fresh checkout/environment.
+    // (RUSTFS_MOUNT is a plain directory, not a pre-provisioned network mount, so it's safe
+    // to provision on demand rather than requiring a manual `mkdir` on every machine.)
     if !StdPath::new(RUSTFS_MOUNT).exists() {
-        eprintln!("❌ ERROR: RustFS mount not found at {}", RUSTFS_MOUNT);
-        std::process::exit(1);
+        if let Err(e) = std::fs::create_dir_all(RUSTFS_MOUNT) {
+            eprintln!("❌ ERROR: RustFS mount not found at {} and could not be created: {}", RUSTFS_MOUNT, e);
+            std::process::exit(1);
+        }
+        println!("ℹ️  Created RustFS mount directory at {} (empty storage root)", RUSTFS_MOUNT);
     }
 
     let sql_allowlist = match Regex::new(SQL_ALLOWLIST_PATTERN) {
@@ -570,11 +752,28 @@ async fn main() {
         }
     };
 
+    let python_cmd = match resolve_python_interpreter() {
+        Some(cmd) => {
+            println!("🐍 Using Python interpreter: {}", cmd);
+            cmd
+        }
+        None => {
+            eprintln!(
+                "❌ ERROR: No working Python 3 interpreter found (tried: python3, python, py).\n\
+                 Install Python 3 and ensure it's on PATH. On Windows, if `python`/`python3`\n\
+                 only opens the Microsoft Store, disable the stub via Settings > Apps >\n\
+                 Advanced app settings > App execution aliases, or install from python.org."
+            );
+            std::process::exit(1);
+        }
+    };
+
     // Initialize shared state
     let state = AppState {
         storage_root: Arc::new(PathBuf::from(RUSTFS_MOUNT)),
         sql_allowlist: Arc::new(sql_allowlist),
         inventory_cache: Arc::new(tokio::sync::RwLock::new(Vec::new())),
+        python_cmd: Arc::new(python_cmd),
     };
 
     // Build Axum router with CORS

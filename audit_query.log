@@ -483,3 +483,643 @@ LINE 1: SELECT * FROM rustfs_inventory WHERE 1=1 AND object_type LIKE '%person%'
 2026-08-17 19:22:53,558 | INFO     | smallpond_executor | Query succeeded | hash=b5a86b07c502c723 | rows=100
 2026-08-17 19:22:53,561 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
 2026-08-17 19:22:53,561 | INFO     | smallpond_executor | ================================================================================
+2026-08-17 22:54:14,620 | INFO     | smallpond_executor | ================================================================================
+2026-08-17 22:54:14,620 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-17 22:54:14,620 | INFO     | smallpond_executor | ================================================================================
+2026-08-17 22:54:14,621 | INFO     | smallpond_executor | Query received | hash=e0d154060e749443 | length=19
+2026-08-17 22:54:14,623 | WARNING  | smallpond_executor | Query validation failed | hash=e0d154060e749443 | error=Table 'media' not in whitelist: {'rustfs_inventory', 'video_segments', 'vtt_overlays', 'rustfs_manifest', 'media_pairs'}
+2026-08-17 22:54:14,624 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-17 22:54:14,624 | INFO     | smallpond_executor | ================================================================================
+2026-08-17 22:54:31,776 | INFO     | smallpond_executor | ================================================================================
+2026-08-17 22:54:31,776 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-17 22:54:31,776 | INFO     | smallpond_executor | ================================================================================
+2026-08-17 22:54:31,777 | INFO     | smallpond_executor | Query received | hash=6761f857c4c0860a | length=25
+2026-08-17 22:54:31,778 | INFO     | smallpond_executor | Query passed validation | hash=6761f857c4c0860a
+2026-08-17 22:54:31,779 | ERROR    | smallpond_executor | DuckDB not installed; falling back to minimal JSON response
+2026-08-17 22:54:31,779 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-17 22:54:31,780 | INFO     | smallpond_executor | ================================================================================
+2026-08-17 22:57:54,354 | INFO     | smallpond_executor | ================================================================================
+2026-08-17 22:57:54,354 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-17 22:57:54,354 | INFO     | smallpond_executor | ================================================================================
+2026-08-17 22:57:54,354 | INFO     | smallpond_executor | Query received | hash=6761f857c4c0860a | length=25
+2026-08-17 22:57:54,356 | INFO     | smallpond_executor | Query passed validation | hash=6761f857c4c0860a
+2026-08-17 22:58:05,913 | INFO     | smallpond_executor | Executing query | hash=6761f857c4c0860a
+2026-08-17 22:58:07,320 | ERROR    | smallpond_executor | Query execution failed | hash=6761f857c4c0860a | error=Catalog Error: Table with name media_pairs does not exist!
+Did you mean "max_bitrate_mappings"?
+
+LINE 1: SELECT * FROM media_pairs
+                      ^
+2026-08-17 22:58:07,328 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-17 22:58:07,328 | INFO     | smallpond_executor | ================================================================================
+2026-08-17 23:02:00,458 | INFO     | smallpond_executor | ================================================================================
+2026-08-17 23:02:00,458 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-17 23:02:00,459 | INFO     | smallpond_executor | ================================================================================
+2026-08-17 23:02:00,459 | INFO     | smallpond_executor | Query received | hash=6761f857c4c0860a | length=25
+2026-08-17 23:02:00,460 | INFO     | smallpond_executor | Query passed validation | hash=6761f857c4c0860a
+2026-08-17 23:02:06,012 | INFO     | smallpond_executor | Executing query | hash=6761f857c4c0860a
+2026-08-17 23:02:07,405 | ERROR    | smallpond_executor | Query execution failed | hash=6761f857c4c0860a | error=Catalog Error: Table with name media_pairs does not exist!
+Did you mean "max_bitrate_mappings"?
+
+LINE 1: SELECT * FROM media_pairs
+                      ^
+2026-08-17 23:02:07,423 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-17 23:02:07,423 | INFO     | smallpond_executor | ================================================================================
+2026-08-17 23:02:48,070 | INFO     | smallpond_executor | ================================================================================
+2026-08-17 23:02:48,070 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-17 23:02:48,070 | INFO     | smallpond_executor | ================================================================================
+2026-08-17 23:02:48,071 | INFO     | smallpond_executor | Query received | hash=6761f857c4c0860a | length=25
+2026-08-17 23:02:48,072 | INFO     | smallpond_executor | Query passed validation | hash=6761f857c4c0860a
+2026-08-17 23:02:53,451 | INFO     | smallpond_executor | Executing query | hash=6761f857c4c0860a
+2026-08-17 23:02:54,829 | ERROR    | smallpond_executor | Query execution failed | hash=6761f857c4c0860a | error=Catalog Error: Table with name media_pairs does not exist!
+Did you mean "max_bitrate_mappings"?
+
+LINE 1: SELECT * FROM media_pairs
+                      ^
+2026-08-17 23:02:54,838 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-17 23:02:54,838 | INFO     | smallpond_executor | ================================================================================
+2026-08-17 23:04:43,643 | INFO     | smallpond_executor | ================================================================================
+2026-08-17 23:04:43,643 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-17 23:04:43,643 | INFO     | smallpond_executor | ================================================================================
+2026-08-17 23:04:43,644 | INFO     | smallpond_executor | Query received | hash=b5a86b07c502c723 | length=103
+2026-08-17 23:04:43,645 | INFO     | smallpond_executor | Query passed validation | hash=b5a86b07c502c723
+2026-08-17 23:04:43,827 | ERROR    | smallpond_executor | DATABASE_URL environment variable not set
+2026-08-17 23:04:43,828 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-17 23:04:43,828 | INFO     | smallpond_executor | ================================================================================
+2026-08-17 23:06:16,786 | INFO     | smallpond_executor | ================================================================================
+2026-08-17 23:06:16,786 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-17 23:06:16,786 | INFO     | smallpond_executor | ================================================================================
+2026-08-17 23:06:16,786 | INFO     | smallpond_executor | Query received | hash=6761f857c4c0860a | length=25
+2026-08-17 23:06:16,788 | INFO     | smallpond_executor | Query passed validation | hash=6761f857c4c0860a
+2026-08-17 23:06:25,785 | INFO     | smallpond_executor | Executing query | hash=6761f857c4c0860a
+2026-08-17 23:06:27,900 | ERROR    | smallpond_executor | Query execution failed | hash=6761f857c4c0860a | error=Catalog Error: Table with name media_pairs does not exist!
+Did you mean "max_bitrate_mappings"?
+
+LINE 1: SELECT * FROM media_pairs
+                      ^
+2026-08-17 23:06:27,908 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-17 23:06:27,908 | INFO     | smallpond_executor | ================================================================================
+2026-08-17 23:08:19,924 | INFO     | smallpond_executor | ================================================================================
+2026-08-17 23:08:19,924 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-17 23:08:19,924 | INFO     | smallpond_executor | ================================================================================
+2026-08-17 23:08:19,924 | INFO     | smallpond_executor | Query received | hash=6761f857c4c0860a | length=25
+2026-08-17 23:08:19,926 | INFO     | smallpond_executor | Query passed validation | hash=6761f857c4c0860a
+2026-08-17 23:08:25,472 | INFO     | smallpond_executor | Executing query | hash=6761f857c4c0860a
+2026-08-17 23:08:26,940 | ERROR    | smallpond_executor | Query execution failed | hash=6761f857c4c0860a | error=Catalog Error: Table with name media_pairs does not exist!
+Did you mean "max_bitrate_mappings"?
+
+LINE 1: SELECT * FROM media_pairs
+                      ^
+2026-08-17 23:08:26,948 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-17 23:08:26,949 | INFO     | smallpond_executor | ================================================================================
+2026-08-17 23:11:08,048 | INFO     | smallpond_executor | ================================================================================
+2026-08-17 23:11:08,049 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-17 23:11:08,049 | INFO     | smallpond_executor | ================================================================================
+2026-08-17 23:11:08,049 | INFO     | smallpond_executor | Query received | hash=b5a86b07c502c723 | length=103
+2026-08-17 23:11:08,051 | INFO     | smallpond_executor | Query passed validation | hash=b5a86b07c502c723
+2026-08-17 23:11:13,876 | INFO     | smallpond_executor | Executing query | hash=b5a86b07c502c723
+2026-08-17 23:21:34,508 | INFO     | smallpond_executor | ================================================================================
+2026-08-17 23:21:34,509 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-17 23:21:34,509 | INFO     | smallpond_executor | ================================================================================
+2026-08-17 23:21:34,510 | INFO     | smallpond_executor | Query received | hash=b5a86b07c502c723 | length=103
+2026-08-17 23:21:34,511 | INFO     | smallpond_executor | Query passed validation | hash=b5a86b07c502c723
+2026-08-17 23:21:40,271 | INFO     | smallpond_executor | Executing query | hash=b5a86b07c502c723
+2026-08-17 23:24:13,260 | INFO     | smallpond_executor | ================================================================================
+2026-08-17 23:24:13,261 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-17 23:24:13,261 | INFO     | smallpond_executor | ================================================================================
+2026-08-17 23:24:13,261 | INFO     | smallpond_executor | Query received | hash=b5a86b07c502c723 | length=103
+2026-08-17 23:24:13,263 | INFO     | smallpond_executor | Query passed validation | hash=b5a86b07c502c723
+2026-08-17 23:25:29,899 | INFO     | smallpond_executor | Executing query | hash=b5a86b07c502c723
+2026-08-17 23:28:25,682 | INFO     | smallpond_executor | ================================================================================
+2026-08-17 23:28:25,682 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-17 23:28:25,682 | INFO     | smallpond_executor | ================================================================================
+2026-08-17 23:28:25,682 | INFO     | smallpond_executor | Query received | hash=3f3b58d6be347757 | length=102
+2026-08-17 23:28:25,684 | INFO     | smallpond_executor | Query passed validation | hash=3f3b58d6be347757
+2026-08-17 23:28:39,394 | INFO     | smallpond_executor | ================================================================================
+2026-08-17 23:28:39,395 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-17 23:28:39,395 | INFO     | smallpond_executor | ================================================================================
+2026-08-17 23:28:39,395 | INFO     | smallpond_executor | Query received | hash=6761f857c4c0860a | length=25
+2026-08-17 23:28:39,397 | INFO     | smallpond_executor | Query passed validation | hash=6761f857c4c0860a
+2026-08-17 23:29:51,041 | INFO     | smallpond_executor | Executing query | hash=3f3b58d6be347757
+2026-08-17 23:29:53,365 | INFO     | smallpond_executor | Executing query | hash=6761f857c4c0860a
+2026-08-17 23:29:55,763 | ERROR    | smallpond_executor | Query execution failed | hash=6761f857c4c0860a | error=Catalog Error: Table with name media_pairs does not exist!
+Did you mean "max_bitrate_mappings"?
+
+LINE 1: SELECT * FROM media_pairs
+                      ^
+2026-08-17 23:29:55,772 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-17 23:29:55,772 | INFO     | smallpond_executor | ================================================================================
+2026-08-17 23:31:45,057 | INFO     | smallpond_executor | ================================================================================
+2026-08-17 23:31:45,057 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-17 23:31:45,057 | INFO     | smallpond_executor | ================================================================================
+2026-08-17 23:31:45,057 | INFO     | smallpond_executor | Query received | hash=3f3b58d6be347757 | length=102
+2026-08-17 23:31:45,059 | INFO     | smallpond_executor | Query passed validation | hash=3f3b58d6be347757
+2026-08-17 23:34:08,770 | INFO     | smallpond_executor | ================================================================================
+2026-08-17 23:34:08,770 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-17 23:34:08,771 | INFO     | smallpond_executor | ================================================================================
+2026-08-17 23:34:08,771 | INFO     | smallpond_executor | Query received | hash=3f3b58d6be347757 | length=102
+2026-08-17 23:34:08,773 | INFO     | smallpond_executor | Query passed validation | hash=3f3b58d6be347757
+2026-08-17 23:52:00,378 | INFO     | smallpond_executor | ================================================================================
+2026-08-17 23:52:00,378 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-17 23:52:00,378 | INFO     | smallpond_executor | ================================================================================
+2026-08-17 23:52:00,379 | INFO     | smallpond_executor | Query received | hash=b5a86b07c502c723 | length=103
+2026-08-17 23:52:00,381 | INFO     | smallpond_executor | Query passed validation | hash=b5a86b07c502c723
+2026-08-18 00:04:28,621 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 00:04:28,621 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 00:04:28,621 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 00:04:28,621 | INFO     | smallpond_executor | Query received | hash=3f3b58d6be347757 | length=102
+2026-08-18 00:04:28,623 | INFO     | smallpond_executor | Query passed validation | hash=3f3b58d6be347757
+2026-08-18 00:04:31,859 | INFO     | smallpond_executor | Executing query | hash=3f3b58d6be347757
+2026-08-18 00:04:32,108 | INFO     | smallpond_executor | Query executed | hash=3f3b58d6be347757 | rows=0
+2026-08-18 00:04:32,109 | INFO     | smallpond_executor | Query succeeded | hash=3f3b58d6be347757 | rows=0
+2026-08-18 00:04:32,109 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-18 00:04:32,109 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 00:05:51,024 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 00:05:51,024 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 00:05:51,025 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 00:05:51,025 | INFO     | smallpond_executor | Query received | hash=235633a754c5639b | length=80
+2026-08-18 00:05:51,026 | INFO     | smallpond_executor | Query passed validation | hash=235633a754c5639b
+2026-08-18 00:05:53,697 | INFO     | smallpond_executor | Executing query | hash=235633a754c5639b
+2026-08-18 00:07:41,647 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 00:07:41,647 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 00:07:41,647 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 00:07:41,647 | INFO     | smallpond_executor | Query received | hash=235633a754c5639b | length=80
+2026-08-18 00:07:41,649 | INFO     | smallpond_executor | Query passed validation | hash=235633a754c5639b
+2026-08-18 00:07:44,664 | INFO     | smallpond_executor | Executing query | hash=235633a754c5639b
+2026-08-18 00:08:10,475 | INFO     | smallpond_executor | Query executed | hash=235633a754c5639b | rows=10
+2026-08-18 00:08:10,476 | INFO     | smallpond_executor | Query succeeded | hash=235633a754c5639b | rows=10
+2026-08-18 00:08:10,477 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-18 00:08:10,477 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 00:11:35,223 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 00:11:35,224 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 00:11:35,224 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 00:11:35,224 | INFO     | smallpond_executor | Query received | hash=b5a86b07c502c723 | length=103
+2026-08-18 00:11:35,225 | INFO     | smallpond_executor | Query passed validation | hash=b5a86b07c502c723
+2026-08-18 00:11:37,117 | INFO     | smallpond_executor | Executing query | hash=b5a86b07c502c723
+2026-08-18 00:12:02,378 | ERROR    | smallpond_executor | Query execution failed | hash=b5a86b07c502c723 | error=canceling statement due to statement timeout
+
+2026-08-18 00:12:02,379 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-18 00:12:02,379 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 00:15:14,155 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 00:15:14,155 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 00:15:14,156 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 00:15:14,156 | INFO     | smallpond_executor | Query received | hash=235633a754c5639b | length=80
+2026-08-18 00:15:14,158 | INFO     | smallpond_executor | Query passed validation | hash=235633a754c5639b
+2026-08-18 00:15:16,473 | INFO     | smallpond_executor | Executing query | hash=235633a754c5639b
+2026-08-18 00:15:36,551 | INFO     | smallpond_executor | Query executed | hash=235633a754c5639b | rows=10
+2026-08-18 00:15:36,551 | INFO     | smallpond_executor | Query succeeded | hash=235633a754c5639b | rows=10
+2026-08-18 00:15:36,552 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-18 00:15:36,552 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 00:24:39,788 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 00:24:39,788 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 00:24:39,788 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 00:24:39,788 | INFO     | smallpond_executor | Query received | hash=b5a86b07c502c723 | length=103
+2026-08-18 00:24:39,790 | INFO     | smallpond_executor | Query passed validation | hash=b5a86b07c502c723
+2026-08-18 00:24:42,015 | INFO     | smallpond_executor | Executing query | hash=b5a86b07c502c723
+2026-08-18 00:25:27,482 | ERROR    | smallpond_executor | Query execution failed | hash=b5a86b07c502c723 | error=canceling statement due to statement timeout
+
+2026-08-18 00:25:27,483 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-18 00:25:27,484 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 00:33:49,020 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 00:33:49,021 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 00:33:49,021 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 00:33:49,021 | INFO     | smallpond_executor | Query received | hash=b5a86b07c502c723 | length=103
+2026-08-18 00:33:49,023 | INFO     | smallpond_executor | Query passed validation | hash=b5a86b07c502c723
+2026-08-18 00:33:57,796 | INFO     | smallpond_executor | Executing query | hash=b5a86b07c502c723
+2026-08-18 01:13:44,464 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 01:13:44,464 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 01:13:44,464 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 01:13:44,465 | INFO     | smallpond_executor | Query received | hash=d44499ca09e6014e | length=95
+2026-08-18 01:13:44,466 | INFO     | smallpond_executor | Query passed validation | hash=d44499ca09e6014e
+2026-08-18 01:13:46,109 | INFO     | smallpond_executor | Executing query | hash=d44499ca09e6014e
+2026-08-18 01:13:47,347 | INFO     | smallpond_executor | Query executed | hash=d44499ca09e6014e | rows=0
+2026-08-18 01:13:47,348 | INFO     | smallpond_executor | Query succeeded | hash=d44499ca09e6014e | rows=0
+2026-08-18 01:13:47,348 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-18 01:13:47,348 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 01:19:41,652 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 01:19:41,653 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 01:19:41,653 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 01:19:41,653 | INFO     | smallpond_executor | Query received | hash=766f94392098f73a | length=95
+2026-08-18 01:19:41,655 | INFO     | smallpond_executor | Query passed validation | hash=766f94392098f73a
+2026-08-18 01:19:43,327 | INFO     | smallpond_executor | Executing query | hash=766f94392098f73a
+2026-08-18 01:19:56,106 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 01:19:56,106 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 01:19:56,107 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 01:19:56,107 | INFO     | smallpond_executor | Query received | hash=766f94392098f73a | length=95
+2026-08-18 01:19:56,108 | INFO     | smallpond_executor | Query passed validation | hash=766f94392098f73a
+2026-08-18 01:19:57,771 | INFO     | smallpond_executor | Executing query | hash=766f94392098f73a
+2026-08-18 01:20:28,767 | INFO     | smallpond_executor | Query executed | hash=766f94392098f73a | rows=100
+2026-08-18 01:20:28,767 | INFO     | smallpond_executor | Query succeeded | hash=766f94392098f73a | rows=100
+2026-08-18 01:20:28,774 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-18 01:20:28,774 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 01:20:28,983 | INFO     | smallpond_executor | Query executed | hash=766f94392098f73a | rows=100
+2026-08-18 01:20:28,992 | INFO     | smallpond_executor | Query succeeded | hash=766f94392098f73a | rows=100
+2026-08-18 01:20:29,000 | ERROR    | smallpond_executor | Failed to serialize response: [Errno 22] Invalid argument
+2026-08-18 01:21:28,283 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 01:21:28,283 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 01:21:28,284 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 01:21:28,284 | INFO     | smallpond_executor | Query received | hash=c1f807c01fe8cd4d | length=94
+2026-08-18 01:21:28,285 | INFO     | smallpond_executor | Query passed validation | hash=c1f807c01fe8cd4d
+2026-08-18 01:21:29,972 | INFO     | smallpond_executor | Executing query | hash=c1f807c01fe8cd4d
+2026-08-18 01:21:30,231 | INFO     | smallpond_executor | Query executed | hash=c1f807c01fe8cd4d | rows=0
+2026-08-18 01:21:30,232 | INFO     | smallpond_executor | Query succeeded | hash=c1f807c01fe8cd4d | rows=0
+2026-08-18 01:21:30,232 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-18 01:21:30,232 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 01:27:26,281 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 01:27:26,282 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 01:27:26,282 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 01:27:26,282 | INFO     | smallpond_executor | Query received | hash=d9a1a866ce3d844a | length=105
+2026-08-18 01:27:26,284 | INFO     | smallpond_executor | Query passed validation | hash=d9a1a866ce3d844a
+2026-08-18 01:27:27,932 | INFO     | smallpond_executor | Executing query | hash=d9a1a866ce3d844a
+2026-08-18 01:27:50,717 | INFO     | smallpond_executor | Query executed | hash=d9a1a866ce3d844a | rows=10
+2026-08-18 01:27:50,717 | INFO     | smallpond_executor | Query succeeded | hash=d9a1a866ce3d844a | rows=10
+2026-08-18 01:27:50,718 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-18 01:27:50,718 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 15:18:59,437 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 15:18:59,437 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 15:18:59,437 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 15:18:59,438 | INFO     | smallpond_executor | Query received | hash=a233502fd3aa7226 | length=106
+2026-08-18 15:18:59,439 | INFO     | smallpond_executor | Query passed validation | hash=a233502fd3aa7226
+2026-08-18 15:19:01,513 | INFO     | smallpond_executor | Executing query | hash=a233502fd3aa7226
+2026-08-18 15:19:37,476 | INFO     | smallpond_executor | Query executed | hash=a233502fd3aa7226 | rows=100
+2026-08-18 15:19:37,476 | INFO     | smallpond_executor | Query succeeded | hash=a233502fd3aa7226 | rows=100
+2026-08-18 15:19:37,483 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-18 15:19:37,483 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 15:39:36,278 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 15:39:36,278 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 15:39:36,278 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 15:39:36,278 | INFO     | smallpond_executor | Query received | hash=413577ddd0d3e474 | length=138
+2026-08-18 15:39:36,280 | INFO     | smallpond_executor | Query passed validation | hash=413577ddd0d3e474
+2026-08-18 15:39:38,401 | INFO     | smallpond_executor | Executing query | hash=413577ddd0d3e474
+2026-08-18 15:40:23,031 | INFO     | smallpond_executor | Query executed | hash=413577ddd0d3e474 | rows=100
+2026-08-18 15:40:23,032 | INFO     | smallpond_executor | Query succeeded | hash=413577ddd0d3e474 | rows=100
+2026-08-18 15:40:23,038 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-18 15:40:23,038 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 16:16:33,843 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 16:16:33,843 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 16:16:33,844 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 16:16:33,844 | INFO     | smallpond_executor | Query received | hash=a233502fd3aa7226 | length=106
+2026-08-18 16:16:33,845 | INFO     | smallpond_executor | Query passed validation | hash=a233502fd3aa7226
+2026-08-18 16:16:35,877 | INFO     | smallpond_executor | Executing query | hash=a233502fd3aa7226
+2026-08-18 16:17:04,749 | INFO     | smallpond_executor | Query executed | hash=a233502fd3aa7226 | rows=100
+2026-08-18 16:17:04,750 | INFO     | smallpond_executor | Query succeeded | hash=a233502fd3aa7226 | rows=100
+2026-08-18 16:17:04,756 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-18 16:17:04,756 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 16:18:49,044 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 16:18:49,044 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 16:18:49,045 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 16:18:49,045 | INFO     | smallpond_executor | Query received | hash=02e711a905776e46 | length=104
+2026-08-18 16:18:49,046 | INFO     | smallpond_executor | Query passed validation | hash=02e711a905776e46
+2026-08-18 16:18:51,094 | INFO     | smallpond_executor | Executing query | hash=02e711a905776e46
+2026-08-18 16:19:52,233 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 16:19:52,233 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 16:19:52,233 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 16:19:52,233 | INFO     | smallpond_executor | Query received | hash=02e711a905776e46 | length=104
+2026-08-18 16:19:52,235 | INFO     | smallpond_executor | Query passed validation | hash=02e711a905776e46
+2026-08-18 16:19:54,040 | INFO     | smallpond_executor | Executing query | hash=02e711a905776e46
+2026-08-18 16:20:20,669 | INFO     | smallpond_executor | Query executed | hash=02e711a905776e46 | rows=100
+2026-08-18 16:20:20,670 | INFO     | smallpond_executor | Query succeeded | hash=02e711a905776e46 | rows=100
+2026-08-18 16:20:20,677 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-18 16:20:20,677 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 16:26:13,306 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 16:26:13,307 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 16:26:13,307 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 16:26:13,307 | INFO     | smallpond_executor | Query received | hash=02e711a905776e46 | length=104
+2026-08-18 16:26:13,309 | INFO     | smallpond_executor | Query passed validation | hash=02e711a905776e46
+2026-08-18 16:26:15,362 | INFO     | smallpond_executor | Executing query | hash=02e711a905776e46
+2026-08-18 16:26:41,473 | INFO     | smallpond_executor | Query executed | hash=02e711a905776e46 | rows=100
+2026-08-18 16:26:41,474 | INFO     | smallpond_executor | Query succeeded | hash=02e711a905776e46 | rows=100
+2026-08-18 16:26:41,481 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-18 16:26:41,481 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 16:33:55,109 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 16:33:55,110 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 16:33:55,110 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 16:33:55,110 | INFO     | smallpond_executor | Query received | hash=4a280dfe64be4996 | length=103
+2026-08-18 16:33:55,112 | INFO     | smallpond_executor | Query passed validation | hash=4a280dfe64be4996
+2026-08-18 16:33:57,089 | INFO     | smallpond_executor | Executing query | hash=4a280dfe64be4996
+2026-08-18 16:34:24,509 | INFO     | smallpond_executor | Query executed | hash=4a280dfe64be4996 | rows=100
+2026-08-18 16:34:24,510 | INFO     | smallpond_executor | Query succeeded | hash=4a280dfe64be4996 | rows=100
+2026-08-18 16:34:24,516 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-18 16:34:24,516 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 16:36:34,178 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 16:36:34,179 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 16:36:34,179 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 16:36:34,179 | INFO     | smallpond_executor | Query received | hash=02e711a905776e46 | length=104
+2026-08-18 16:36:34,180 | INFO     | smallpond_executor | Query passed validation | hash=02e711a905776e46
+2026-08-18 16:36:36,425 | INFO     | smallpond_executor | Executing query | hash=02e711a905776e46
+2026-08-18 16:37:01,141 | INFO     | smallpond_executor | Query executed | hash=02e711a905776e46 | rows=100
+2026-08-18 16:37:01,142 | INFO     | smallpond_executor | Query succeeded | hash=02e711a905776e46 | rows=100
+2026-08-18 16:37:01,149 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-18 16:37:01,149 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 16:45:26,577 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 16:45:26,578 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 16:45:26,578 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 16:45:26,578 | INFO     | smallpond_executor | Query received | hash=02e711a905776e46 | length=104
+2026-08-18 16:45:26,580 | INFO     | smallpond_executor | Query passed validation | hash=02e711a905776e46
+2026-08-18 16:45:29,685 | INFO     | smallpond_executor | Executing query | hash=02e711a905776e46
+2026-08-18 16:45:57,546 | INFO     | smallpond_executor | Query executed | hash=02e711a905776e46 | rows=100
+2026-08-18 16:45:57,547 | INFO     | smallpond_executor | Query succeeded | hash=02e711a905776e46 | rows=100
+2026-08-18 16:45:57,554 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-18 16:45:57,554 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 16:58:54,009 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 16:58:54,009 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 16:58:54,009 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 16:58:54,009 | INFO     | smallpond_executor | Query received | hash=b64131fbca9dda70 | length=100
+2026-08-18 16:58:54,011 | INFO     | smallpond_executor | Query passed validation | hash=b64131fbca9dda70
+2026-08-18 16:58:56,492 | INFO     | smallpond_executor | Executing query | hash=b64131fbca9dda70
+2026-08-18 16:58:59,423 | INFO     | smallpond_executor | Query executed | hash=b64131fbca9dda70 | rows=100
+2026-08-18 16:58:59,423 | INFO     | smallpond_executor | Query succeeded | hash=b64131fbca9dda70 | rows=100
+2026-08-18 16:58:59,429 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-18 16:58:59,429 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 17:15:45,750 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 17:15:45,750 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 17:15:45,751 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 17:15:45,751 | INFO     | smallpond_executor | Query received | hash=a233502fd3aa7226 | length=106
+2026-08-18 17:15:45,752 | INFO     | smallpond_executor | Query passed validation | hash=a233502fd3aa7226
+2026-08-18 17:15:45,815 | ERROR    | smallpond_executor | DATABASE_URL environment variable not set
+2026-08-18 17:15:45,824 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-18 17:15:45,824 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 17:15:54,149 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 17:15:54,150 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 17:15:54,150 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 17:15:54,150 | INFO     | smallpond_executor | Query received | hash=a233502fd3aa7226 | length=106
+2026-08-18 17:15:54,152 | INFO     | smallpond_executor | Query passed validation | hash=a233502fd3aa7226
+2026-08-18 17:15:54,215 | ERROR    | smallpond_executor | DATABASE_URL environment variable not set
+2026-08-18 17:15:54,224 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-18 17:15:54,224 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 17:16:07,902 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 17:16:07,902 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 17:16:07,902 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 17:16:07,902 | INFO     | smallpond_executor | Query received | hash=a233502fd3aa7226 | length=106
+2026-08-18 17:16:07,904 | INFO     | smallpond_executor | Query passed validation | hash=a233502fd3aa7226
+2026-08-18 17:16:09,641 | INFO     | smallpond_executor | Executing query | hash=a233502fd3aa7226
+2026-08-18 17:16:33,362 | INFO     | smallpond_executor | Query executed | hash=a233502fd3aa7226 | rows=100
+2026-08-18 17:16:33,362 | INFO     | smallpond_executor | Query succeeded | hash=a233502fd3aa7226 | rows=100
+2026-08-18 17:16:33,372 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-18 17:16:33,372 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 17:16:41,766 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 17:16:41,766 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 17:16:41,766 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 17:16:41,767 | INFO     | smallpond_executor | Query received | hash=a233502fd3aa7226 | length=106
+2026-08-18 17:16:41,768 | INFO     | smallpond_executor | Query passed validation | hash=a233502fd3aa7226
+2026-08-18 17:16:43,430 | INFO     | smallpond_executor | Executing query | hash=a233502fd3aa7226
+2026-08-18 17:17:07,452 | INFO     | smallpond_executor | Query executed | hash=a233502fd3aa7226 | rows=100
+2026-08-18 17:17:07,453 | INFO     | smallpond_executor | Query succeeded | hash=a233502fd3aa7226 | rows=100
+2026-08-18 17:17:07,461 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-18 17:17:07,461 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 17:20:48,109 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 17:20:48,110 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 17:20:48,110 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 17:20:48,110 | INFO     | smallpond_executor | Query received | hash=a233502fd3aa7226 | length=106
+2026-08-18 17:20:48,112 | INFO     | smallpond_executor | Query passed validation | hash=a233502fd3aa7226
+2026-08-18 17:20:49,792 | INFO     | smallpond_executor | Executing query | hash=a233502fd3aa7226
+2026-08-18 17:21:14,595 | INFO     | smallpond_executor | Query executed | hash=a233502fd3aa7226 | rows=100
+2026-08-18 17:21:14,595 | INFO     | smallpond_executor | Query succeeded | hash=a233502fd3aa7226 | rows=100
+2026-08-18 17:21:14,604 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-18 17:21:14,604 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 17:29:07,910 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 17:29:07,910 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 17:29:07,911 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 17:29:07,911 | INFO     | smallpond_executor | Query received | hash=a233502fd3aa7226 | length=106
+2026-08-18 17:29:07,912 | INFO     | smallpond_executor | Query passed validation | hash=a233502fd3aa7226
+2026-08-18 17:29:09,600 | INFO     | smallpond_executor | Executing query | hash=a233502fd3aa7226
+2026-08-18 17:29:33,231 | INFO     | smallpond_executor | Query executed | hash=a233502fd3aa7226 | rows=100
+2026-08-18 17:29:33,231 | INFO     | smallpond_executor | Query succeeded | hash=a233502fd3aa7226 | rows=100
+2026-08-18 17:29:33,240 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-18 17:29:33,240 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 17:30:45,156 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 17:30:45,156 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 17:30:45,156 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 17:30:45,156 | INFO     | smallpond_executor | Query received | hash=a233502fd3aa7226 | length=106
+2026-08-18 17:30:45,158 | INFO     | smallpond_executor | Query passed validation | hash=a233502fd3aa7226
+2026-08-18 17:30:46,850 | INFO     | smallpond_executor | Executing query | hash=a233502fd3aa7226
+2026-08-18 17:31:11,100 | INFO     | smallpond_executor | Query executed | hash=a233502fd3aa7226 | rows=100
+2026-08-18 17:31:11,100 | INFO     | smallpond_executor | Query succeeded | hash=a233502fd3aa7226 | rows=100
+2026-08-18 17:31:11,108 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-18 17:31:11,108 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 17:35:34,379 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 17:35:34,379 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 17:35:34,379 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 17:35:34,380 | INFO     | smallpond_executor | Query received | hash=a233502fd3aa7226 | length=106
+2026-08-18 17:35:34,381 | INFO     | smallpond_executor | Query passed validation | hash=a233502fd3aa7226
+2026-08-18 17:35:36,040 | INFO     | smallpond_executor | Executing query | hash=a233502fd3aa7226
+2026-08-18 17:35:59,762 | INFO     | smallpond_executor | Query executed | hash=a233502fd3aa7226 | rows=100
+2026-08-18 17:35:59,763 | INFO     | smallpond_executor | Query succeeded | hash=a233502fd3aa7226 | rows=100
+2026-08-18 17:35:59,770 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-18 17:35:59,771 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 17:44:58,853 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 17:44:58,853 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 17:44:58,853 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 17:44:58,854 | INFO     | smallpond_executor | Query received | hash=5a149bdd30a074dc | length=69
+2026-08-18 17:44:58,855 | INFO     | smallpond_executor | Query passed validation | hash=5a149bdd30a074dc
+2026-08-18 17:45:00,537 | INFO     | smallpond_executor | Executing query | hash=5a149bdd30a074dc
+2026-08-18 17:45:02,305 | INFO     | smallpond_executor | Query executed | hash=5a149bdd30a074dc | rows=1
+2026-08-18 17:45:02,305 | INFO     | smallpond_executor | Query succeeded | hash=5a149bdd30a074dc | rows=1
+2026-08-18 17:45:02,307 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-18 17:45:02,307 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 17:46:59,271 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 17:46:59,271 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 17:46:59,271 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 17:46:59,271 | INFO     | smallpond_executor | Query received | hash=a233502fd3aa7226 | length=106
+2026-08-18 17:46:59,273 | INFO     | smallpond_executor | Query passed validation | hash=a233502fd3aa7226
+2026-08-18 17:47:00,975 | INFO     | smallpond_executor | Executing query | hash=a233502fd3aa7226
+2026-08-18 17:47:24,662 | INFO     | smallpond_executor | Query executed | hash=a233502fd3aa7226 | rows=100
+2026-08-18 17:47:24,663 | INFO     | smallpond_executor | Query succeeded | hash=a233502fd3aa7226 | rows=100
+2026-08-18 17:47:24,821 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-18 17:47:24,821 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:00:41,813 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:00:41,813 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 18:00:41,814 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:00:41,814 | INFO     | smallpond_executor | Query received | hash=2fa1534b174328f9 | length=71
+2026-08-18 18:00:41,816 | INFO     | smallpond_executor | Query passed validation | hash=2fa1534b174328f9
+2026-08-18 18:00:43,521 | INFO     | smallpond_executor | Executing query | hash=2fa1534b174328f9
+2026-08-18 18:00:46,140 | INFO     | smallpond_executor | Query executed | hash=2fa1534b174328f9 | rows=100
+2026-08-18 18:00:46,140 | INFO     | smallpond_executor | Query succeeded | hash=2fa1534b174328f9 | rows=100
+2026-08-18 18:00:46,278 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-18 18:00:46,278 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:17:10,987 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:17:10,988 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 18:17:10,988 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:17:10,988 | INFO     | smallpond_executor | Query received | hash=2fa1534b174328f9 | length=71
+2026-08-18 18:17:10,990 | INFO     | smallpond_executor | Query passed validation | hash=2fa1534b174328f9
+2026-08-18 18:17:12,683 | INFO     | smallpond_executor | Executing query | hash=2fa1534b174328f9
+2026-08-18 18:17:15,292 | INFO     | smallpond_executor | Verifying 100 segment(s) against RustFS | hash=2fa1534b174328f9
+2026-08-18 18:17:17,995 | INFO     | smallpond_executor | Dropped 70 ghost segment(s) not found on RustFS | hash=2fa1534b174328f9
+2026-08-18 18:17:17,995 | INFO     | smallpond_executor | Query executed | hash=2fa1534b174328f9 | rows=30
+2026-08-18 18:17:17,995 | INFO     | smallpond_executor | Query succeeded | hash=2fa1534b174328f9 | rows=30
+2026-08-18 18:17:18,045 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-18 18:17:18,045 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:17:30,216 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:17:30,217 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 18:17:30,217 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:17:30,217 | INFO     | smallpond_executor | Query received | hash=2fa1534b174328f9 | length=71
+2026-08-18 18:17:30,219 | INFO     | smallpond_executor | Query passed validation | hash=2fa1534b174328f9
+2026-08-18 18:17:31,912 | INFO     | smallpond_executor | Executing query | hash=2fa1534b174328f9
+2026-08-18 18:17:34,533 | INFO     | smallpond_executor | Verifying 100 segment(s) against RustFS | hash=2fa1534b174328f9
+2026-08-18 18:17:37,104 | INFO     | smallpond_executor | Dropped 70 ghost segment(s) not found on RustFS | hash=2fa1534b174328f9
+2026-08-18 18:17:37,104 | INFO     | smallpond_executor | Query executed | hash=2fa1534b174328f9 | rows=30
+2026-08-18 18:17:37,104 | INFO     | smallpond_executor | Query succeeded | hash=2fa1534b174328f9 | rows=30
+2026-08-18 18:17:37,146 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-18 18:17:37,147 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:17:50,527 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:17:50,527 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 18:17:50,528 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:17:50,528 | INFO     | smallpond_executor | Query received | hash=2fa1534b174328f9 | length=71
+2026-08-18 18:17:50,530 | INFO     | smallpond_executor | Query passed validation | hash=2fa1534b174328f9
+2026-08-18 18:17:52,237 | INFO     | smallpond_executor | Executing query | hash=2fa1534b174328f9
+2026-08-18 18:17:54,827 | INFO     | smallpond_executor | Verifying 100 segment(s) against RustFS | hash=2fa1534b174328f9
+2026-08-18 18:17:57,456 | INFO     | smallpond_executor | Dropped 70 ghost segment(s) not found on RustFS | hash=2fa1534b174328f9
+2026-08-18 18:17:57,456 | INFO     | smallpond_executor | Query executed | hash=2fa1534b174328f9 | rows=30
+2026-08-18 18:17:57,456 | INFO     | smallpond_executor | Query succeeded | hash=2fa1534b174328f9 | rows=30
+2026-08-18 18:17:57,506 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-18 18:17:57,507 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:18:25,342 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:18:25,342 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 18:18:25,343 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:18:25,343 | INFO     | smallpond_executor | Query received | hash=a233502fd3aa7226 | length=106
+2026-08-18 18:18:25,344 | INFO     | smallpond_executor | Query passed validation | hash=a233502fd3aa7226
+2026-08-18 18:18:27,031 | INFO     | smallpond_executor | Executing query | hash=a233502fd3aa7226
+2026-08-18 18:18:50,990 | INFO     | smallpond_executor | Verifying 100 segment(s) against RustFS | hash=a233502fd3aa7226
+2026-08-18 18:18:53,600 | INFO     | smallpond_executor | Dropped 70 ghost segment(s) not found on RustFS | hash=a233502fd3aa7226
+2026-08-18 18:18:53,600 | INFO     | smallpond_executor | Query executed | hash=a233502fd3aa7226 | rows=30
+2026-08-18 18:18:53,601 | INFO     | smallpond_executor | Query succeeded | hash=a233502fd3aa7226 | rows=30
+2026-08-18 18:18:53,651 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-18 18:18:53,651 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:30:01,850 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:30:01,850 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 18:30:01,850 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:30:01,850 | INFO     | smallpond_executor | Query received | hash=a233502fd3aa7226 | length=106
+2026-08-18 18:30:01,852 | INFO     | smallpond_executor | Query passed validation | hash=a233502fd3aa7226
+2026-08-18 18:30:03,518 | INFO     | smallpond_executor | Executing query | hash=a233502fd3aa7226
+2026-08-18 18:30:27,721 | INFO     | smallpond_executor | Verifying 100 segment(s) against RustFS | hash=a233502fd3aa7226
+2026-08-18 18:30:30,344 | INFO     | smallpond_executor | Dropped 70 ghost segment(s) not found on RustFS | hash=a233502fd3aa7226
+2026-08-18 18:30:30,344 | INFO     | smallpond_executor | Query executed | hash=a233502fd3aa7226 | rows=30
+2026-08-18 18:30:30,344 | INFO     | smallpond_executor | Query succeeded | hash=a233502fd3aa7226 | rows=30
+2026-08-18 18:30:30,397 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-18 18:30:30,397 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:30:31,492 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:30:31,492 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 18:30:31,492 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:30:31,493 | INFO     | smallpond_executor | Query received | hash=fe5eea644452bc9b | length=142
+2026-08-18 18:30:31,495 | INFO     | smallpond_executor | Query passed validation | hash=fe5eea644452bc9b
+2026-08-18 18:30:33,179 | INFO     | smallpond_executor | Executing query | hash=fe5eea644452bc9b
+2026-08-18 18:30:33,414 | ERROR    | smallpond_executor | Query execution failed | hash=fe5eea644452bc9b | error=operator does not exist: jsonb !~~* unknown
+LINE 1: ... detections::text ILIKE '%helmet%' AND detections NOT ILIKE ...
+                                                             ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+
+2026-08-18 18:30:33,414 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-18 18:30:33,415 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:30:34,122 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:30:34,123 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 18:30:34,123 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:30:34,123 | INFO     | smallpond_executor | Query received | hash=02e711a905776e46 | length=104
+2026-08-18 18:30:34,125 | INFO     | smallpond_executor | Query passed validation | hash=02e711a905776e46
+2026-08-18 18:30:35,783 | INFO     | smallpond_executor | Executing query | hash=02e711a905776e46
+2026-08-18 18:31:00,197 | INFO     | smallpond_executor | Verifying 100 segment(s) against RustFS | hash=02e711a905776e46
+2026-08-18 18:31:02,649 | INFO     | smallpond_executor | Dropped 85 ghost segment(s) not found on RustFS | hash=02e711a905776e46
+2026-08-18 18:31:02,649 | INFO     | smallpond_executor | Query executed | hash=02e711a905776e46 | rows=15
+2026-08-18 18:31:02,650 | INFO     | smallpond_executor | Query succeeded | hash=02e711a905776e46 | rows=15
+2026-08-18 18:31:02,680 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-18 18:31:02,680 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:31:03,628 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:31:03,628 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 18:31:03,628 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:31:03,629 | INFO     | smallpond_executor | Query received | hash=68c1d2e5d82dbd34 | length=106
+2026-08-18 18:31:03,632 | INFO     | smallpond_executor | Query passed validation | hash=68c1d2e5d82dbd34
+2026-08-18 18:31:05,299 | INFO     | smallpond_executor | Executing query | hash=68c1d2e5d82dbd34
+2026-08-18 18:31:28,687 | INFO     | smallpond_executor | Verifying 100 segment(s) against RustFS | hash=68c1d2e5d82dbd34
+2026-08-18 18:31:31,144 | INFO     | smallpond_executor | Dropped 70 ghost segment(s) not found on RustFS | hash=68c1d2e5d82dbd34
+2026-08-18 18:31:31,145 | INFO     | smallpond_executor | Query executed | hash=68c1d2e5d82dbd34 | rows=30
+2026-08-18 18:31:31,145 | INFO     | smallpond_executor | Query succeeded | hash=68c1d2e5d82dbd34 | rows=30
+2026-08-18 18:31:31,193 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-18 18:31:31,193 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:31:32,232 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:31:32,233 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 18:31:32,233 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:31:32,233 | INFO     | smallpond_executor | Query received | hash=75ed518c3c8ac8c0 | length=107
+2026-08-18 18:31:32,235 | INFO     | smallpond_executor | Query passed validation | hash=75ed518c3c8ac8c0
+2026-08-18 18:31:33,875 | INFO     | smallpond_executor | Executing query | hash=75ed518c3c8ac8c0
+2026-08-18 18:31:55,112 | INFO     | smallpond_executor | Verifying 100 segment(s) against RustFS | hash=75ed518c3c8ac8c0
+2026-08-18 18:31:57,523 | INFO     | smallpond_executor | Dropped 70 ghost segment(s) not found on RustFS | hash=75ed518c3c8ac8c0
+2026-08-18 18:31:57,524 | INFO     | smallpond_executor | Query executed | hash=75ed518c3c8ac8c0 | rows=30
+2026-08-18 18:31:57,524 | INFO     | smallpond_executor | Query succeeded | hash=75ed518c3c8ac8c0 | rows=30
+2026-08-18 18:31:57,572 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-18 18:31:57,572 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:31:58,601 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:31:58,602 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 18:31:58,602 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:31:58,602 | INFO     | smallpond_executor | Query received | hash=0cbda4adc5cdf192 | length=105
+2026-08-18 18:31:58,604 | INFO     | smallpond_executor | Query passed validation | hash=0cbda4adc5cdf192
+2026-08-18 18:32:00,249 | INFO     | smallpond_executor | Executing query | hash=0cbda4adc5cdf192
+2026-08-18 18:32:38,974 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:32:38,974 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 18:32:38,975 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:32:38,975 | INFO     | smallpond_executor | Query received | hash=fe5eea644452bc9b | length=142
+2026-08-18 18:32:38,976 | INFO     | smallpond_executor | Query passed validation | hash=fe5eea644452bc9b
+2026-08-18 18:32:40,649 | INFO     | smallpond_executor | Executing query | hash=fe5eea644452bc9b
+2026-08-18 18:33:24,215 | INFO     | smallpond_executor | Verifying 60 segment(s) against RustFS | hash=fe5eea644452bc9b
+2026-08-18 18:33:26,292 | INFO     | smallpond_executor | Dropped 58 ghost segment(s) not found on RustFS | hash=fe5eea644452bc9b
+2026-08-18 18:33:26,292 | INFO     | smallpond_executor | Query executed | hash=fe5eea644452bc9b | rows=2
+2026-08-18 18:33:26,292 | INFO     | smallpond_executor | Query succeeded | hash=fe5eea644452bc9b | rows=2
+2026-08-18 18:33:26,296 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-18 18:33:26,296 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:33:34,815 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:33:34,816 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 18:33:34,816 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:33:34,816 | INFO     | smallpond_executor | Query received | hash=0cbda4adc5cdf192 | length=105
+2026-08-18 18:33:34,818 | INFO     | smallpond_executor | Query passed validation | hash=0cbda4adc5cdf192
+2026-08-18 18:33:36,494 | INFO     | smallpond_executor | Executing query | hash=0cbda4adc5cdf192
+2026-08-18 18:34:01,199 | INFO     | smallpond_executor | Verifying 45 segment(s) against RustFS | hash=0cbda4adc5cdf192
+2026-08-18 18:34:03,194 | INFO     | smallpond_executor | Dropped 45 ghost segment(s) not found on RustFS | hash=0cbda4adc5cdf192
+2026-08-18 18:34:03,195 | INFO     | smallpond_executor | Query executed | hash=0cbda4adc5cdf192 | rows=0
+2026-08-18 18:34:03,195 | INFO     | smallpond_executor | Query succeeded | hash=0cbda4adc5cdf192 | rows=0
+2026-08-18 18:34:03,197 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-18 18:34:03,198 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:34:14,576 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:34:14,576 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 18:34:14,576 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:34:14,577 | INFO     | smallpond_executor | Query received | hash=2fa1534b174328f9 | length=71
+2026-08-18 18:34:14,579 | INFO     | smallpond_executor | Query passed validation | hash=2fa1534b174328f9
+2026-08-18 18:34:16,255 | INFO     | smallpond_executor | Executing query | hash=2fa1534b174328f9
+2026-08-18 18:34:18,862 | INFO     | smallpond_executor | Verifying 100 segment(s) against RustFS | hash=2fa1534b174328f9
+2026-08-18 18:34:21,350 | INFO     | smallpond_executor | Dropped 70 ghost segment(s) not found on RustFS | hash=2fa1534b174328f9
+2026-08-18 18:34:21,350 | INFO     | smallpond_executor | Query executed | hash=2fa1534b174328f9 | rows=30
+2026-08-18 18:34:21,351 | INFO     | smallpond_executor | Query succeeded | hash=2fa1534b174328f9 | rows=30
+2026-08-18 18:34:21,399 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-18 18:34:21,400 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:34:28,444 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:34:28,445 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 18:34:28,445 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:34:28,445 | INFO     | smallpond_executor | Query received | hash=fae5d4d788ddcc02 | length=101
+2026-08-18 18:34:28,447 | INFO     | smallpond_executor | Query passed validation | hash=fae5d4d788ddcc02
+2026-08-18 18:34:30,143 | INFO     | smallpond_executor | Executing query | hash=fae5d4d788ddcc02
+2026-08-18 18:34:30,845 | INFO     | smallpond_executor | Verifying 4 segment(s) against RustFS | hash=fae5d4d788ddcc02
+2026-08-18 18:34:32,359 | INFO     | smallpond_executor | Dropped 4 ghost segment(s) not found on RustFS | hash=fae5d4d788ddcc02
+2026-08-18 18:34:32,360 | INFO     | smallpond_executor | Query executed | hash=fae5d4d788ddcc02 | rows=0
+2026-08-18 18:34:32,360 | INFO     | smallpond_executor | Query succeeded | hash=fae5d4d788ddcc02 | rows=0
+2026-08-18 18:34:32,361 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-18 18:34:32,361 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:34:40,456 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:34:40,456 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 18:34:40,456 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:34:40,456 | INFO     | smallpond_executor | Query received | hash=b64131fbca9dda70 | length=100
+2026-08-18 18:34:40,458 | INFO     | smallpond_executor | Query passed validation | hash=b64131fbca9dda70
+2026-08-18 18:34:42,130 | INFO     | smallpond_executor | Executing query | hash=b64131fbca9dda70
+2026-08-18 18:34:53,177 | INFO     | smallpond_executor | Verifying 100 segment(s) against RustFS | hash=b64131fbca9dda70
+2026-08-18 18:34:55,689 | INFO     | smallpond_executor | Dropped 70 ghost segment(s) not found on RustFS | hash=b64131fbca9dda70
+2026-08-18 18:34:55,690 | INFO     | smallpond_executor | Query executed | hash=b64131fbca9dda70 | rows=30
+2026-08-18 18:34:55,690 | INFO     | smallpond_executor | Query succeeded | hash=b64131fbca9dda70 | rows=30
+2026-08-18 18:34:55,741 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-18 18:34:55,741 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:40:00,183 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:40:00,184 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR STARTED
+2026-08-18 18:40:00,184 | INFO     | smallpond_executor | ================================================================================
+2026-08-18 18:40:00,184 | INFO     | smallpond_executor | Query received | hash=2fa1534b174328f9 | length=71
+2026-08-18 18:40:00,186 | INFO     | smallpond_executor | Query passed validation | hash=2fa1534b174328f9
+2026-08-18 18:40:01,888 | INFO     | smallpond_executor | Executing query | hash=2fa1534b174328f9
+2026-08-18 18:40:04,474 | INFO     | smallpond_executor | Verifying 100 segment(s) against RustFS | hash=2fa1534b174328f9
+2026-08-18 18:40:07,049 | INFO     | smallpond_executor | Dropped 70 ghost segment(s) not found on RustFS | hash=2fa1534b174328f9
+2026-08-18 18:40:07,050 | INFO     | smallpond_executor | Query executed | hash=2fa1534b174328f9 | rows=30
+2026-08-18 18:40:07,050 | INFO     | smallpond_executor | Query succeeded | hash=2fa1534b174328f9 | rows=30
+2026-08-18 18:40:07,097 | INFO     | smallpond_executor | SMALLPOND QUERY EXECUTOR COMPLETED
+2026-08-18 18:40:07,097 | INFO     | smallpond_executor | ================================================================================

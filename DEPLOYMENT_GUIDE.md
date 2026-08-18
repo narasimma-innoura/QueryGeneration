@@ -34,7 +34,7 @@
 - **Rust:** 1.80+ (via `rustup`)
 - **Lean 4:** 4.30.0+ (via `elan`)
 - **Python:** 3.10+ (for Smallpond backend)
-- **DuckDB:** 0.10+ (via Python `duckdb` package)
+- **psycopg2:** 2.9+ (via Python `psycopg2-binary` package)
 - **Node.js:** 18+ (optional, for dev tooling)
 
 ### Optional Runtime Support
@@ -142,11 +142,10 @@ source venv/bin/activate  # Linux/macOS
 
 # Install Smallpond stack
 pip install --upgrade pip
-pip install duckdb==0.10.0 ray[tune]==2.10.0 pyarrow==15.0.0
+pip install -r requirements.txt
 
-# Verify installations
-python -c "import duckdb; print(f'DuckDB: {duckdb.__version__}')"
-python -c "import ray; print(f'Ray: {ray.__version__}')"
+# Verify installation
+python -c "import psycopg2; print(f'psycopg2: {psycopg2.__version__}')"
 ```
 
 ---
@@ -244,7 +243,8 @@ WORKDIR /app
 COPY --from=builder /build/target/release/rustfs_video_audit_engine /app/
 COPY scripts/ /app/scripts/
 COPY static/ /app/static/
-RUN pip install duckdb==0.10.0 pyarrow==15.0.0
+COPY requirements.txt /app/
+RUN pip install -r /app/requirements.txt
 
 EXPOSE 8000
 CMD ["/app/rustfs_video_audit_engine"]
@@ -339,6 +339,12 @@ export RUST_LOG=info
 
 # API port
 export API_PORT=8000
+
+# Postgres connection string used by scripts/run_smallpond_query.py (required
+# for /api/audit). No default — the server must set this before launching the
+# gateway binary, since the Python subprocess inherits it from the parent
+# process environment. Never commit real credentials to source control.
+export DATABASE_URL=postgres://<user>:<password>@<host>:5432/<database>
 ```
 
 ### Customizing SQL Allowlist
@@ -512,28 +518,15 @@ cargo build --release  # Already configured in Cargo.toml
 export TOKIO_WORKER_THREADS=8
 ```
 
-### DuckDB Optimization
+### Query Backend
 
-```python
-# In run_smallpond_query.py
-import duckdb
-
-conn = duckdb.connect(':memory:')
-
-# Enable query optimization
-conn.execute("SET threads = 8")
-conn.execute("SET memory_limit = '4GB'")
-
-# Use Parquet partition columns
-conn.execute("""
-    CREATE TABLE rustfs_inventory AS
-    SELECT * FROM read_parquet(
-        '{PARQUET_LEDGER_PATH}',
-        partition_by = ['video_id'],
-        hive_partitioning = true
-    )
-""")
-```
+`run_smallpond_query.py` connects to Postgres directly via `psycopg2` rather than
+through DuckDB's `ATTACH ... TYPE postgres` scanner — the DuckDB postgres
+extension was measured to take 35s+ (and time out) on queries `psycopg2`
+answers in ~6s, apparently pulling far more data than requested before
+applying `LIMIT`/`WHERE` locally. A server-side `statement_timeout` is set
+per connection so a runaway query is aborted by Postgres itself rather than
+relying solely on the Rust gateway's subprocess timeout.
 
 ### Network Optimization
 

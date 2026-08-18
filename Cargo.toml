@@ -42,6 +42,9 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"]
 anyhow = "1.0"
 thiserror = "1.0"
 
+# Local .env file loading (development configuration)
+dotenvy = "0.15"
+
 # Optional: Parquet support (if direct Rust reads needed)
 # parquet = "51.0"
 # arrow = "51.0"

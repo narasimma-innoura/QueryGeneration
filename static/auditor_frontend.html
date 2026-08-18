@@ -237,12 +237,22 @@
             border-radius: 4px;
             overflow: hidden;
             margin-bottom: 15px;
+            position: relative;
         }
 
         video {
             width: 100%;
             height: auto;
             display: block;
+        }
+
+        #detectionOverlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
         }
 
         .player-controls {
@@ -412,6 +422,7 @@
             <video id="videoPlayer" controls>
                 Your browser does not support the HTML5 video tag.
             </video>
+            <canvas id="detectionOverlay"></canvas>
         </div>
         <div class="player-controls">
             <strong id="playerTitle">Ready</strong>
@@ -429,6 +440,10 @@
 const API_BASE = "http://localhost:8000";
 let selectedResult = null;
 let currentResults = [];
+// The detections JSON (frames[].boxes[]) for whichever result is currently
+// loaded in the player, or null when nothing is selected / the row had no
+// detections field. Read by the overlay draw loop below.
+let currentDetections = null;
 
 // ========================================================================
 // Utility Functions
@@ -465,39 +480,173 @@ function quickHash(str) {
 // Gemini Nano Integration (Browser-Local NLU)
 // ========================================================================
 
+const GEMINI_NANO_SYSTEM_PROMPT = `You are a SQL query generator for a workplace safety/hazard video monitoring system (PPE compliance monitoring only). Convert natural language questions to DuckDB SQL targeting the 'video_segments' table, which stores recorded camera footage with AI-detected PPE items — there is no user/account/vehicle-registry data of any kind in this system, only footage and what was detected in it.
+
+Available columns: camera_id (text), start_ms (bigint), end_ms (bigint), duration_ms (int), s3_key (text), size_bytes (bigint), detections (text — a JSON blob of detected items), complete (boolean — whether the recording finished normally).
+
+The detections JSON carries exactly one kind of real signal (verified directly against the production database — every label below has real matching rows, and no other label or event-category token exists anywhere in this data, so never invent one):
+
+Per-object labels: person, helmet, no_helmet, vest, no_vest, gloves, no_gloves, goggles, no_goggles, shoes, no_shoes, fire, smoke. "no_<item>" means that PPE item was required but not detected (a violation).
+
+This system does NOT track falls, mask compliance, entry/exit, access control, driver drowsiness, mobile phone use, seat belt compliance, trucks, cars, or generic "breach" events — none of those concepts exist in this data. If asked about one of these, do not invent a filter for it (see rule 8).
+
+Rules:
+1. Only output the SQL query string, nothing else
+2. Always use SELECT * FROM video_segments WHERE 1=1 as the base (the WHERE clause is mandatory even with no real filter — this is a grammar requirement of the backend, not a stylistic choice)
+3. For timestamp ranges, append AND start_ms >= X AND end_ms <= Y (start_ms/end_ms are millisecond Unix epoch timestamps, e.g. ~1786942455587 — a real range looks like that, not small numbers like 1000-5000)
+4. For a PPE violation (missing helmet/vest/gloves/goggles/shoes), append AND detections ILIKE '%no_<item>%' (e.g. '%no_helmet%')
+5. For a PPE item being worn compliantly, append AND detections ILIKE '%<item>%' AND detections NOT ILIKE '%no_<item>%' (the NOT ILIKE matters — "helmet" alone is a substring of "no_helmet" and would match violations too without it)
+6. For a general "any PPE violation/hazard/unsafe/non-compliant" request naming no specific item, append AND detections ILIKE '%no_%' (every PPE violation label starts with "no_")
+7. For fire or smoke, append AND detections ILIKE '%fire%' or '%smoke%' (these exist in the data but are extremely rare — a handful of rows total)
+8. Never invent an ILIKE filter for a word that isn't a label above (e.g. "users", "active", "login", "truck", "fall", "seatbelt", "phone", "mask", "drowsy") — those never match anything in this data. If the request is only about a concept this system doesn't track, leave the base WHERE 1=1 with no AND conditions added rather than guessing a filter that is guaranteed to return zero rows
+9. If the request does not name a detection, item, or timestamp range, leave the base WHERE 1=1 with no AND conditions added — do not guess a filter just to have one
+10. Always end with ORDER BY start_ms DESC LIMIT 100
+11. No markdown, no explanations
+
+Example input: "Show workers not wearing a helmet"
+Example output: SELECT * FROM video_segments WHERE 1=1 AND detections ILIKE '%no_helmet%' ORDER BY start_ms DESC LIMIT 100
+
+Example input: "Show segments with any safety violation"
+Example output: SELECT * FROM video_segments WHERE 1=1 AND detections ILIKE '%no_%' ORDER BY start_ms DESC LIMIT 100
+
+Example input: "Show workers wearing a helmet correctly"
+Example output: SELECT * FROM video_segments WHERE 1=1 AND detections ILIKE '%helmet%' AND detections NOT ILIKE '%no_helmet%' ORDER BY start_ms DESC LIMIT 100
+
+Example input: "Show footage between timestamp 1786942000000 and 1786943000000"
+Example output: SELECT * FROM video_segments WHERE 1=1 AND start_ms >= 1786942000000 AND end_ms <= 1786943000000 ORDER BY start_ms DESC LIMIT 100
+
+Example input: "Show missing safety goggles"
+Example output: SELECT * FROM video_segments WHERE 1=1 AND detections ILIKE '%no_goggles%' ORDER BY start_ms DESC LIMIT 100
+
+Example input: "Show fall incidents"
+Example output: SELECT * FROM video_segments WHERE 1=1 ORDER BY start_ms DESC LIMIT 100
+
+Example input: "select active users"
+Example output: SELECT * FROM video_segments WHERE 1=1 ORDER BY start_ms DESC LIMIT 100`;
+
+// Columns and detection tokens the backend schema actually supports (mirrors
+// the system prompt above). Used to validate Nano's output post-hoc — a small
+// on-device model will occasionally hallucinate a column or invent a token
+// (e.g. "truck", "user") despite the prompt instructions, and that shouldn't
+// silently reach the backend as a wrong-but-well-formed query.
+const KNOWN_COLUMNS = ["camera_id", "start_ms", "end_ms", "duration_ms", "s3_key", "size_bytes", "detections", "complete"];
+// Verified directly against production data (see conversation history) — these
+// are the ONLY labels that ever appear in the detections JSON. Tokens like
+// FALL_DETECTION/SEAT_BELT_COMPLIANCE/etc. were previously taught to the model
+// but never existed in this dataset, so every query using them silently
+// returned zero rows. Deliberately not listed here so such output now fails
+// validation and falls back to the heuristic instead of querying for nothing.
+const KNOWN_DETECTION_TOKENS = [
+    "person", "helmet", "no_helmet", "vest", "no_vest", "gloves", "no_gloves",
+    "goggles", "no_goggles", "shoes", "no_shoes", "fire", "smoke", "no_",
+];
+
+// Reject SQL that doesn't match the shape the backend allowlist and this
+// schema actually support. Catches hallucinated columns/tokens from the
+// on-device model before they're sent as a wrong-but-well-formed query.
+function isValidGeneratedSql(sql) {
+    if (!/^SELECT\s+\*\s+FROM\s+video_segments\b/i.test(sql.trim())) {
+        return false;
+    }
+    if (/\b(drop|delete|insert|update|alter|attach|pragma|copy|--|;)\b/i.test(sql)) {
+        return false;
+    }
+
+    // Every bare identifier referenced outside of quoted string literals must
+    // be a known column or SQL keyword — catches invented columns.
+    const withoutStrings = sql.replace(/'[^']*'/g, "''");
+    const identifiers = withoutStrings.match(/\b[a-zA-Z_][a-zA-Z0-9_]*\b/g) || [];
+    const allowedKeywords = new Set([
+        "SELECT", "FROM", "WHERE", "AND", "OR", "ORDER", "BY", "LIMIT", "DESC", "ASC",
+        "ILIKE", "LIKE", "NOT", "video_segments", "true", "false", "TRUE", "FALSE",
+    ]);
+    for (const id of identifiers) {
+        if (allowedKeywords.has(id) || KNOWN_COLUMNS.includes(id)) continue;
+        return false;
+    }
+
+    // Every ILIKE pattern's inner token must match (as substring, either
+    // direction) a known detection label or event token — catches invented
+    // filter words like "truck", "user", "login".
+    const ilikeMatches = [...sql.matchAll(/ILIKE\s+'%?([^%']*)%?'/gi)];
+    for (const [, token] of ilikeMatches) {
+        if (!token) continue; // bare '%no_%' style catch-all
+        const lower = token.toLowerCase();
+        const known = KNOWN_DETECTION_TOKENS.some(
+            (k) => k.toLowerCase() === lower || lower.includes(k.toLowerCase()) || k.toLowerCase().includes(lower)
+        );
+        if (!known) return false;
+    }
+
+    return true;
+}
+
+// Chrome's on-device Prompt API. Feature-detected via the global `LanguageModel`
+// object (not the older, now-removed `window.ai.languageModel` path).
+async function isGeminiNanoAvailable() {
+    if (typeof LanguageModel === "undefined") {
+        return false;
+    }
+    try {
+        const availability = await LanguageModel.availability();
+        // "available" = ready now. "downloadable"/"downloading" would block
+        // this search on a multi-GB download, so those fall back too.
+        return availability === "available";
+    } catch (err) {
+        return false;
+    }
+}
+
 async function generateSqlWithGeminiNano(question) {
-    // Attempt to use Gemini Nano if available
-    if (!window.ai || !window.ai.languageModel) {
-        // Fallback: simple heuristic transformation
-        log("⚠️  Gemini Nano not available; using fallback SQL generation", "warning");
+    if (!(await isGeminiNanoAvailable())) {
         return fallbackSqlGeneration(question);
     }
 
     try {
-        const session = await window.ai.languageModel.create({
-            systemPrompt: `You are a SQL query generator. Convert natural language questions to DuckDB SQL targeting the 'video_segments' table.
+        // Low temperature + low topK favor the single "correct" SQL shape
+        // taught by the few-shot examples over creative rephrasing — this is
+        // a constrained translation task, not open-ended generation, so
+        // determinism matters more than variety.
+        const sessionOptions = { initialPrompts: [{ role: "system", content: GEMINI_NANO_SYSTEM_PROMPT }] };
+        try {
+            const params = await LanguageModel.params();
+            if (params) {
+                sessionOptions.temperature = Math.min(0.2, params.maxTemperature ?? 0.2);
+                sessionOptions.topK = Math.max(1, Math.min(3, params.maxTopK ?? 3));
+            }
+        } catch (paramErr) {
+            // Older/behind-flag builds may not implement params() — fall back
+            // to the model's own defaults rather than failing generation.
+        }
 
-Available columns: camera_id (text), start_ms (bigint), end_ms (bigint), duration_ms (int), s3_key (text), size_bytes (bigint), detections (text), complete (boolean).
-
-Rules:
-1. Only output the SQL query string, nothing else
-2. Always use SELECT ... FROM video_segments
-3. For timestamp ranges, use "WHERE start_ms >= X AND end_ms <= Y"
-4. For text matching, use ILIKE for partial matches in JSON text
-5. Always order by start_ms DESC LIMIT 100
-6. No markdown, no explanations
-
-Example input: "Show truck entries where breach was detected"
-Example output: SELECT * FROM video_segments WHERE detections ILIKE '%truck%' ORDER BY start_ms DESC LIMIT 100`
-        });
+        const session = await LanguageModel.create(sessionOptions);
 
         const result = await session.prompt(`Convert to SQL: "${question}"`);
         let generatedSql = result.trim().replace(/```sql|```/g, "").trim();
+
+        // Defensive backstop: the backend's SQL allowlist grammar only permits
+        // ORDER BY/LIMIT inside a WHERE clause (WHERE is what the trailing
+        // grammar hangs off of), so a model reply with no WHERE at all would
+        // otherwise pass client-side but get rejected by the gateway. The
+        // system prompt instructs "always include WHERE 1=1", but this is a
+        // small on-device model — don't rely on it following that perfectly.
+        if (!/\bwhere\b/i.test(generatedSql)) {
+            generatedSql = generatedSql.replace(
+                /\bFROM\s+video_segments\b/i,
+                "FROM video_segments WHERE 1=1"
+            );
+        }
+
         // Ensure standard formatting if model output is unconventional
         if (!generatedSql.toLowerCase().includes("order by")) {
             // Strip any existing limit to cleanly append order by + limit
             generatedSql = generatedSql.replace(/\s+limit\s+\d+/i, "");
             generatedSql += " ORDER BY start_ms DESC LIMIT 100";
+        }
+
+        if (!isValidGeneratedSql(generatedSql)) {
+            log("Gemini Nano output failed schema validation — using local heuristic instead", "warning");
+            return fallbackSqlGeneration(question);
         }
         return generatedSql;
     } catch (err) {
@@ -507,30 +656,66 @@ Example output: SELECT * FROM video_segments WHERE detections ILIKE '%truck%' OR
 }
 
 function fallbackSqlGeneration(question) {
-    // Simple heuristic SQL generation for fallback
+    // Simple heuristic SQL generation for fallback.
+    //
+    // This system detects PPE (personal protective equipment) compliance, not
+    // vehicles — the real `detections` labels (confirmed against live data)
+    // are: person, helmet/no_helmet, vest/no_vest, gloves/no_gloves,
+    // goggles/no_goggles, shoes/no_shoes, fire, smoke. There is no
+    // truck/car/breach concept anywhere in this data.
     const q = question.toLowerCase();
-    
+
     let sql = "SELECT * FROM video_segments WHERE 1=1";
-    
-    // Detect breach queries
-    if (q.includes("breach")) {
-        sql += " AND detections ILIKE '%breach%'";
+
+    // Generic "violation"/"hazard" queries: every violation label is
+    // "no_<item>", so a bare "no_" substring match catches all of them at
+    // once (safe: no other field in this schema's JSON contains "no_").
+    if (/\b(violation|breach|hazard|unsafe|non[- ]?compliant)\b/.test(q)) {
+        sql += " AND detections ILIKE '%no_%'";
     }
-    
-    // Detect object type queries
-    if (q.includes("truck")) sql += " AND detections ILIKE '%truck%'";
-    else if (q.includes("person")) sql += " AND detections ILIKE '%person%'";
-    else if (q.includes("car")) sql += " AND detections ILIKE '%car%'";
-    
+
+    // PPE item queries. "helmet" is a substring of "no_helmet", so a bare
+    // ILIKE would also match segments containing a no_helmet violation
+    // elsewhere in the same frame data — NOT ILIKE excludes that when the
+    // request is clearly about the compliant case (no "no"/"without"/
+    // "missing" qualifier), same pattern for every item below.
+    const negated = /\b(no|without|missing|not wearing)\b/.test(q);
+    const items = ["helmet", "vest", "gloves", "goggles", "shoes"];
+    for (const item of items) {
+        if (q.includes(item)) {
+            sql += negated
+                ? ` AND detections ILIKE '%no_${item}%'`
+                : ` AND detections ILIKE '%${item}%' AND detections NOT ILIKE '%no_${item}%'`;
+            break; // one item per query keeps this simple heuristic predictable
+        }
+    }
+
+    // NOTE: an earlier version of this heuristic matched "fall"/"mask"/
+    // "entry"/"access control"/"drowsy"/"phone"/"seat belt" to uppercase
+    // event-category tokens (FALL_DETECTION, MASK_COMPLIANCE, etc.), on the
+    // assumption they'd appear in the detections JSON as a SubCategory enum
+    // value. Verified directly against the production database: none of
+    // those tokens have ever matched a single row — this dataset only ever
+    // contains PPE-item labels (see the list above). Filtering on them
+    // silently returned zero rows for every such query, so that branch was
+    // removed rather than left generating guaranteed-empty SQL.
+    if (q.includes("person") || q.includes("worker")) {
+        sql += " AND detections ILIKE '%person%'";
+    } else if (q.includes("fire")) {
+        sql += " AND detections ILIKE '%fire%'";
+    } else if (q.includes("smoke")) {
+        sql += " AND detections ILIKE '%smoke%'";
+    }
+
     // Detect timestamp ranges
     const tsMatch = q.match(/(\d+)\s*(?:to|and)\s*(\d+)/);
     if (tsMatch) {
         sql += ` AND start_ms >= ${parseInt(tsMatch[1])} AND end_ms <= ${parseInt(tsMatch[2])}`;
     }
-    
+
     // Add ORDER BY and LIMIT to fetch newest rows and prevent crashing
     sql += " ORDER BY start_ms DESC LIMIT 100";
-    
+
     return sql;
 }
 
@@ -551,8 +736,10 @@ async function runAuditSearch() {
     searchBtn.textContent = "⏳ Generating SQL...";
 
     try {
-        // Step 1: Generate SQL via Gemini Nano
-        log("🤖 Translating intent on local GPU via Gemini Nano...");
+        // Step 1: Generate SQL (Gemini Nano if available — see startup log
+        // for status — otherwise the local heuristic; both paths are
+        // handled inside generateSqlWithGeminiNano)
+        log("🤖 Translating intent to SQL...");
         const sqlQuery = await generateSqlWithGeminiNano(textPrompt);
         
         document.getElementById("sqlConsole").textContent = `> ${sqlQuery}`;
@@ -566,7 +753,16 @@ async function runAuditSearch() {
         searchBtn.textContent = "⏳ Querying backend...";
         const startTime = performance.now();
 
-        const response = await fetch(`${API_BASE}/api/audit?sql_query=${encodeURIComponent(sqlQuery)}`);
+        // cache: "no-store" + a cache-busting param, same reasoning as the
+        // /proxy/video fix: the same NL question always generates the same
+        // SQL, so this is always the same URL — without both of these, a
+        // repeated search could keep replaying a cached response from before
+        // a backend fix (e.g. the per-camera diversification rewrite)
+        // instead of actually hitting the fixed server again.
+        const response = await fetch(
+            `${API_BASE}/api/audit?sql_query=${encodeURIComponent(sqlQuery)}&_cb=${Date.now()}`,
+            { cache: "no-store" }
+        );
         const endTime = performance.now();
         const queryTime = (endTime - startTime).toFixed(2);
 
@@ -624,6 +820,91 @@ function displayResults(results) {
     `).join("");
 }
 
+// ========================================================================
+// Detection Overlay (draws video_segments.detections boxes on the player)
+// ========================================================================
+//
+// detections shape (see main.rs MediaPair / run_smallpond_query.py):
+//   { width, height, frames: [ { t: <seconds into segment>, boxes: [
+//       { bbox: [x1,y1,x2,y2], label, score, color, model_type }, ... ] }, ... ] }
+// bbox coordinates are pixels in the source frame (detections.width x
+// .height), so they're scaled to the canvas's current rendered size on
+// every draw — the player can be any CSS width, and detections were sampled
+// at the source recording resolution, not the display resolution.
+
+// Sizes the overlay canvas's backing bitmap to match the video element's
+// current rendered (CSS) size. Must run whenever that size can change —
+// on load and on window resize — otherwise boxes drawn at the old
+// dimensions drift out of alignment with the video underneath them.
+function resizeDetectionOverlay() {
+    const video = document.getElementById("videoPlayer");
+    const canvas = document.getElementById("detectionOverlay");
+    if (!video || !canvas) return;
+    canvas.width = video.clientWidth;
+    canvas.height = video.clientHeight;
+}
+
+// Detection frames are sampled roughly once a second, not every video
+// frame, so this holds the most recent detection at-or-before the current
+// playback position rather than requiring an exact timestamp match.
+function findDetectionFrame(detections, currentTimeSec) {
+    if (!detections || !Array.isArray(detections.frames) || detections.frames.length === 0) {
+        return null;
+    }
+    let best = detections.frames[0];
+    for (const f of detections.frames) {
+        if (f.t <= currentTimeSec) {
+            best = f;
+        } else {
+            break; // frames are in ascending t order
+        }
+    }
+    return best;
+}
+
+function drawDetectionOverlay() {
+    const video = document.getElementById("videoPlayer");
+    const canvas = document.getElementById("detectionOverlay");
+    if (!video || !canvas) return;
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (!currentDetections || canvas.width === 0 || canvas.height === 0) return;
+
+    const frame = findDetectionFrame(currentDetections, video.currentTime);
+    if (!frame || !Array.isArray(frame.boxes)) return;
+
+    const srcW = currentDetections.width || canvas.width;
+    const srcH = currentDetections.height || canvas.height;
+    const scaleX = canvas.width / srcW;
+    const scaleY = canvas.height / srcH;
+
+    ctx.lineWidth = 2;
+    ctx.font = "12px monospace";
+    ctx.textBaseline = "top";
+
+    for (const box of frame.boxes) {
+        if (!Array.isArray(box.bbox) || box.bbox.length < 4) continue;
+        const [x1, y1, x2, y2] = box.bbox;
+        const rx = x1 * scaleX;
+        const ry = y1 * scaleY;
+        const rw = (x2 - x1) * scaleX;
+        const rh = (y2 - y1) * scaleY;
+        const color = box.color || "#00ff00";
+
+        ctx.strokeStyle = color;
+        ctx.strokeRect(rx, ry, rw, rh);
+
+        const label = box.label + (typeof box.score === "number" ? ` ${box.score.toFixed(2)}` : "");
+        const textWidth = ctx.measureText(label).width;
+        const labelY = Math.max(0, ry - 16);
+        ctx.fillStyle = color;
+        ctx.fillRect(rx, labelY, textWidth + 6, 16);
+        ctx.fillStyle = "#000";
+        ctx.fillText(label, rx + 3, labelY + 1);
+    }
+}
+
 function selectResult(idx) {
     selectedResult = idx;
     const items = document.querySelectorAll(".result-item");
@@ -637,6 +918,15 @@ function selectResult(idx) {
     const playerTitle = document.getElementById("playerTitle");
     const playerDetails = document.getElementById("playerDetails");
 
+    currentDetections = item.detections || null;
+    // Clear immediately so the previous video's boxes don't linger on
+    // screen during the moment before the new video's "loadedmetadata"
+    // fires and redraws for real.
+    const overlayCanvas = document.getElementById("detectionOverlay");
+    if (overlayCanvas) {
+        overlayCanvas.getContext("2d").clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+    }
+
     playerPanel.style.display = "block";
     playerTitle.textContent = `${item.video_id} (${item.start_ts}–${item.end_ts})`;
     
@@ -646,21 +936,68 @@ function selectResult(idx) {
     // Generate bash command to combine init segment + media segment into a playable mp4
     const cliCmd = `curl -s "${initUrl}" "${item.video_segment_url}" > segment.mp4 && open segment.mp4`;
 
+    // The /proxy/video route already remuxes init.mp4 + the .m4s fragment
+    // server-side into a normal playable MP4 (see main.rs proxy_video_handler),
+    // so this succeeds for the overwhelming majority of segments. The
+    // CORS/fragmented-MP4 fallback below used to render unconditionally on
+    // every single result — implying playback was broken when it almost
+    // always wasn't — so it's now hidden unless the <video> element actually
+    // fires an error (e.g. init.mp4 missing/unreachable for that segment).
     playerDetails.innerHTML = `
         <div style="margin-bottom:10px;">
-            <a href="${item.video_segment_url}" target="_blank" style="color:var(--accent-primary);">[Raw .m4s]</a> | 
+            <a href="${item.video_segment_url}" target="_blank" style="color:var(--accent-primary);">[Raw .m4s]</a> |
             <a href="${item.zstd_vtt_url}" target="_blank" style="color:var(--accent-primary);">[Raw .vtt.zst]</a>
         </div>
-        <div style="background:var(--bg-secondary); padding:10px; border-radius:4px; border:1px solid #444;">
-            <strong style="color:#ffcc00;">⚠️ Browser Playback Failed? (CORS / Fragmented MP4)</strong><br>
-            Browsers cannot play raw .m4s fragments directly because they lack the 'moov' header (init.mp4).<br>
+        <div id="playbackFallback" style="display:none; background:var(--bg-secondary); padding:10px; border-radius:4px; border:1px solid #444;">
+            <strong style="color:#ffcc00;">⚠️ Browser Playback Failed</strong><br>
+            <span id="playbackFallbackReason">Checking why...</span><br>
             Copy and paste this into your Mac terminal to instantly combine and play the video:
             <code style="display:block; margin-top:8px; padding:10px; background:#000; color:#0f0; user-select:all; border-radius:4px;">${cliCmd}</code>
         </div>
     `;
 
-    // Route video request through the local Rust proxy to combine init.mp4 and bypass CORS
-    videoPlayer.src = `${API_BASE}/proxy/video?url=${encodeURIComponent(item.video_segment_url)}`;
+    // Route video request through the local Rust proxy to combine init.mp4 and bypass CORS.
+    // A cache-busting param is required, not optional: this same proxy URL may
+    // already be sitting in the browser's HTTP cache from before the server-side
+    // fix (missing Range support / no-store header) — the server header alone
+    // only stops *future* caching, it can't invalidate what a browser already
+    // stored, so a repeat visit could keep replaying the old broken response
+    // forever without this.
+    const proxyUrl = `${API_BASE}/proxy/video?url=${encodeURIComponent(item.video_segment_url)}&_cb=${Date.now()}`;
+
+    // A <video> onerror event only exposes a generic MediaError code (network/
+    // decode/unsupported) — it can't see the proxy's actual HTTP response body,
+    // which is where main.rs now puts the real reason (e.g. "init.mp4 not found
+    // at ... (upstream returned HTTP 404)"). Fetching the same URL directly
+    // surfaces that specific diagnostic instead of a generic guess.
+    videoPlayer.onerror = async () => {
+        const fallback = document.getElementById("playbackFallback");
+        const reasonEl = document.getElementById("playbackFallbackReason");
+        if (!fallback) return;
+        fallback.style.display = "block";
+        if (!reasonEl) return;
+        try {
+            const probe = await fetch(proxyUrl, { cache: "no-store" });
+            reasonEl.textContent = probe.ok
+                ? "The proxy returned a playable response, but the browser could not decode it."
+                : await probe.text();
+        } catch (err) {
+            reasonEl.textContent = `Could not reach the proxy: ${err.message}`;
+        }
+    };
+    videoPlayer.src = proxyUrl;
+    // Setting .src alone doesn't reliably make an already-loaded <video>
+    // element drop its previous buffered/decoded frame and fetch the new
+    // source — browsers can keep showing the old video's last frame until
+    // something forces a reload. .load() forces that reset; .play() then
+    // starts the new segment immediately so it's visually obvious a
+    // different segment loaded, rather than requiring a manual click on
+    // "play" that could still be showing the stale previous frame.
+    videoPlayer.load();
+    videoPlayer.play().catch(() => {
+        // Autoplay can still be blocked in some browser/embedding contexts;
+        // that's fine, the video is loaded and ready for a manual play.
+    });
 }
 
 function clearInput() {
@@ -710,12 +1047,42 @@ async function checkHealth() {
 document.addEventListener("DOMContentLoaded", async () => {
     log("🚀 RustFS Forensic Audit System initialized");
     log("📍 Gateway URL: " + API_BASE);
-    
+
+    // Report Gemini Nano availability once, here, instead of re-checking on
+    // every search — it doesn't change mid-session, so repeating it is noise.
+    if (await isGeminiNanoAvailable()) {
+        log("🤖 Gemini Nano available — using on-device NLU for SQL generation");
+    } else if (typeof LanguageModel !== "undefined") {
+        log("ℹ️  Gemini Nano present but not downloaded/ready yet (chrome://components) — using local heuristic SQL generation");
+    } else {
+        log("ℹ️  Gemini Nano not available in this browser — using local heuristic SQL generation");
+    }
+
     // Check system health
     await checkHealth();
-    
+
     // Periodic health checks
     setInterval(checkHealth, 30000);
+
+    // Detection overlay wiring — attached once here rather than inside
+    // selectResult() so repeated selections don't pile up duplicate
+    // listeners. "loadedmetadata" fires once the video's rendered size is
+    // known (needed to size the canvas); "timeupdate"/"seeked" redraw boxes
+    // as playback position changes; window "resize" keeps the canvas
+    // aligned with the video if the layout reflows.
+    const videoPlayer = document.getElementById("videoPlayer");
+    if (videoPlayer) {
+        videoPlayer.addEventListener("loadedmetadata", () => {
+            resizeDetectionOverlay();
+            drawDetectionOverlay();
+        });
+        videoPlayer.addEventListener("timeupdate", drawDetectionOverlay);
+        videoPlayer.addEventListener("seeked", drawDetectionOverlay);
+    }
+    window.addEventListener("resize", () => {
+        resizeDetectionOverlay();
+        drawDetectionOverlay();
+    });
 });
 </script>
 </body>
