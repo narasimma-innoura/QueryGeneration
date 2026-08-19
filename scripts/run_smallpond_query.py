@@ -233,16 +233,62 @@ def execute_query_safe(query: str) -> Dict[str, Any]:
         # Execute user query
         logger.info(f"Executing query | hash={query_hash}")
         
+        # Extract ALL target detection labels mentioned anywhere in the SQL query string
+        KNOWN_DETECTION_LABELS = [
+            'zone_breach', 'no_helmet', 'no_gloves', 'no_goggles', 'no_shoes', 'no_vest',
+            'helmet', 'gloves', 'goggles', 'shoes', 'vest', 'person', 'fire', 'smoke'
+        ]
+        target_labels = []
+        query_lower = query.lower()
+        
+        # Sort labels by length descending so longer/specific labels (e.g. 'no_helmet') match first
+        sorted_known = sorted(KNOWN_DETECTION_LABELS, key=len, reverse=True)
+        matched_spans = []
+        
+        for label in sorted_known:
+            label_spaced = label.replace('_', ' ')
+            label_det = f"{label}_detection"
+            
+            for pattern in [label, label_spaced, label_det]:
+                for m in re.finditer(re.escape(pattern), query_lower):
+                    start, end = m.span()
+                    # Skip if this match overlaps with an already matched longer label (e.g. 'helmet' inside 'no_helmet')
+                    if not any(s <= start and end <= e for s, e in matched_spans):
+                        matched_spans.append((start, end))
+                        if label not in target_labels:
+                            target_labels.append(label)
+
         # Inject PostgreSQL JSONB operators to eliminate TOAST table scans
         if "video_segments" in query.lower():
+            # If no LIMIT clause is provided, automatically append LIMIT 1000
+            if "limit" not in query.lower():
+                if "order by" not in query.lower():
+                    query = query.strip() + " ORDER BY start_ms DESC LIMIT 1000"
+                else:
+                    query = query.strip() + " LIMIT 1000"
+
             # First, rewrite `SELECT *` to fetch the columns we need including detections JSONB
             exec_query = re.sub(r'SELECT\s+\*\s+FROM', 'SELECT camera_id, start_ms, end_ms, s3_key, detections FROM', query, flags=re.IGNORECASE)
             
             # Then, rewrite the slow ILIKE to a hyper-fast JSONB structural containment check (@>)
-            # This matches the schema: {"frames": [{"boxes": [{"label": "keyword"}]}]}
-            def replace_ilike(match):
-                keyword = match.group(1)
-                return f"detections @> '{{\"frames\": [{{\"boxes\": [{{\"label\": \"{keyword}\"}}]}}]}}'"
+            # Handles label aliases (e.g. helmet_detection -> helmet, no_helmet_detection -> no_helmet)
+            def replace_ilike(m):
+                keyword = m.group(1).lower().strip()
+                clean_label = re.sub(r'(_)?detection(s)?$', '', keyword).strip()
+                
+                conds = []
+                if clean_label:
+                    conds.append(f"detections @> '{{\"frames\": [{{\"boxes\": [{{\"label\": \"{clean_label}\"}}]}}]}}'")
+                if keyword and keyword != clean_label:
+                    conds.append(f"detections @> '{{\"frames\": [{{\"boxes\": [{{\"label\": \"{keyword}\"}}]}}]}}'")
+                
+                # Only check model_type for non-"no_" labels (since model_type for no_helmet is HELMET_DETECTION)
+                if not clean_label.startswith("no_"):
+                    model_type = f"{clean_label.upper()}_DETECTION"
+                    conds.append(f"detections @> '{{\"frames\": [{{\"boxes\": [{{\"model_type\": \"{model_type}\"}}]}}]}}'")
+                
+                return f"({' OR '.join(conds)})"
+            
             exec_query = re.sub(r'detections(?:\:\:text)?\s+ILIKE\s+\'%([^%]+)%\'', replace_ilike, exec_query, flags=re.IGNORECASE)
         else:
             exec_query = query
@@ -257,6 +303,30 @@ def execute_query_safe(query: str) -> Dict[str, Any]:
             
         conn.close()
         
+        # Helper to strictly match target box label vs queried detection
+        def is_box_matching_target(b, target_kws):
+            # If no detection filter in SQL query -> return ALL bounding box coordinates!
+            if not target_kws:
+                return True
+            
+            box_label = (b.get("label") or "").lower().strip()
+            box_has_no = box_label.startswith("no_") or box_label.startswith("no-")
+            norm_box = box_label.replace("no_", "").replace("no-", "").strip()
+
+            for target_kw in target_kws:
+                target_clean = re.sub(r'(_)?detection(s)?$', '', target_kw.lower()).strip()
+                target_has_no = target_clean.startswith("no_") or target_clean.startswith("no-") or "no " in target_clean
+                
+                # Strict invariant: negative (no_helmet) and positive (helmet) labels must NEVER match each other
+                if target_has_no != box_has_no:
+                    continue
+                    
+                norm_target = target_clean.replace("no_", "").replace("no-", "").strip()
+                if norm_box == norm_target or norm_box in norm_target or norm_target in norm_box:
+                    return True
+                    
+            return False
+
         # Convert to standard dicts and map schema
         results = []
         for row in result:
@@ -264,12 +334,29 @@ def execute_query_safe(query: str) -> Dict[str, Any]:
             
             # If the query was against video_segments, we map it
             if "camera_id" in d:
+                raw_det = d.get("detections")
+                # Filter bounding boxes dynamically based on SQL query filters
+                if target_labels and isinstance(raw_det, dict) and "frames" in raw_det:
+                    filtered_frames = []
+                    for frame in raw_det.get("frames", []):
+                        boxes = frame.get("boxes", [])
+                        matching_boxes = [b for b in boxes if is_box_matching_target(b, target_labels)]
+                        if matching_boxes:
+                            frame_copy = dict(frame)
+                            frame_copy["boxes"] = matching_boxes
+                            filtered_frames.append(frame_copy)
+                    det_copy = dict(raw_det)
+                    det_copy["frames"] = filtered_frames
+                    filtered_det = det_copy
+                else:
+                    filtered_det = raw_det
+
                 mapped = {
                     "video_id": d.get("camera_id"),
                     "cameraName": cameras.get(d.get("camera_id"), "Unknown Camera"),
                     "start_ts": d.get("start_ms"),
                     "end_ts": d.get("end_ms"),
-                    "detections": d.get("detections"),
+                    "detections": filtered_det,
                 }
                 if "s3_key" in d:
                     base_url = "http://54.204.98.59:10011/visionguard-playback/"
