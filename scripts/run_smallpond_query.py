@@ -251,6 +251,10 @@ def execute_query_safe(query: str) -> Dict[str, Any]:
             cur.execute(exec_query)
             result = cur.fetchall()
             
+            # Fetch camera names for mapping
+            cur.execute("SELECT id, name FROM cameras")
+            cameras = {r['id']: r['name'] for r in cur.fetchall()}
+            
         conn.close()
         
         # Convert to standard dicts and map schema
@@ -262,6 +266,7 @@ def execute_query_safe(query: str) -> Dict[str, Any]:
             if "camera_id" in d:
                 mapped = {
                     "video_id": d.get("camera_id"),
+                    "cameraName": cameras.get(d.get("camera_id"), "Unknown Camera"),
                     "start_ts": d.get("start_ms"),
                     "end_ts": d.get("end_ms"),
                 }

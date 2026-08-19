@@ -64,6 +64,8 @@ struct AppState {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct MediaPair {
     video_id: String,
+    #[serde(rename = "cameraName")]
+    camera_name: Option<String>,
     start_ts: i64,
     end_ts: i64,
     video_segment_url: String,
@@ -480,6 +482,7 @@ async fn sync_inventory(State(state): State<AppState>) -> Response {
         if let Some(overlay_path) = overlays.get(&key) {
             synchronized_playlist.push(MediaPair {
                 video_id: key.0,
+                camera_name: None,
                 start_ts: key.1,
                 end_ts: key.2,
                 video_segment_url: video_path,

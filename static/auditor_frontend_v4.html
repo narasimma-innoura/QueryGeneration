@@ -175,6 +175,9 @@
             display: grid;
             grid-template-columns: 1fr;
             gap: 15px;
+            max-height: 600px;
+            overflow-y: auto;
+            padding-right: 5px;
         }
 
         .result-item {
@@ -364,9 +367,6 @@
                 </div>
             </div>
 
-            <button class="secondary" onclick="syncInventory()" style="width: 100%; margin-top: 15px;">
-                🔄 Resync Inventory
-            </button>
         </div>
 
         <!-- MIDDLE PANEL: SQL Query Analysis -->
@@ -671,11 +671,11 @@ function displayResults(results) {
     container.innerHTML = results.map((item, idx) => `
         <div class="result-item" onclick="selectResult(${idx})">
             <div class="result-item-header">
-                <span>🎥 ${item.video_id}</span>
+                <span>🎥 ${item.cameraName ? item.cameraName : item.video_id}</span>
                 <span style="font-size: 12px; color: #666;">Seg #${idx + 1}</span>
             </div>
             <div class="result-item-details">
-                <div>⏱️  <strong>Timestamp:</strong> ${item.start_ts} → ${item.end_ts}</div>
+                <div>⏱️  <strong>Timestamp:</strong> ${new Date(Number(item.start_ts)).toLocaleString()} → ${new Date(Number(item.end_ts)).toLocaleTimeString()}</div>
             </div>
             <div class="result-item-urls">
                 <a href="${item.video_segment_url}" title="Video segment (.ts)" target="_blank">📹 Video</a>
@@ -713,12 +713,6 @@ function selectResult(idx) {
         <div style="margin-bottom:10px;">
             <a href="${item.video_segment_url}" target="_blank" style="color:var(--accent-primary);">[Raw .m4s]</a> | 
             <a href="${item.zstd_vtt_url}" target="_blank" style="color:var(--accent-primary);">[Raw .vtt.zst]</a>
-        </div>
-        <div style="background:var(--bg-secondary); padding:10px; border-radius:4px; border:1px solid #444;">
-            <strong style="color:#ffcc00;">⚠️ Browser Playback Failed? (CORS / Fragmented MP4)</strong><br>
-            Browsers cannot play raw .m4s fragments directly because they lack the 'moov' header (init.mp4).<br>
-            Copy and paste this into your Mac terminal to instantly combine and play the video:
-            <code style="display:block; margin-top:8px; padding:10px; background:#000; color:#0f0; user-select:all; border-radius:4px;">${cliCmd}</code>
         </div>
     `;
 
