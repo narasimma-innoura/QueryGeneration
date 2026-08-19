@@ -499,7 +499,7 @@ Rules:
 2. Always use SELECT * FROM video_segments
 3. Do NOT add timestamp filters (start_ms) unless the user explicitly asks for "today" or "last 24 hours". The videos are old, so a 24-hour filter will return 0 results!
 4. If they do ask for time, use: EXTRACT(EPOCH FROM NOW() - INTERVAL '1 day') * 1000
-5. Always order by start_ms DESC LIMIT 1000 (or LIMIT 1 if they ask for "last")
+5. Always order by start_ms DESC LIMIT 1000 (or ASC LIMIT 1 if they ask for "first"/"oldest", and DESC LIMIT 1 if they ask for "last"/"newest")
 6. No markdown, no explanations
 
 Example input: "Show zone detection alerts"
@@ -527,12 +527,21 @@ Example output: SELECT * FROM video_segments WHERE detections ILIKE '%zone_breac
             generatedSql = generatedSql.replace(/[^a-zA-Z0-9_()=<>'\s%\*\+\-\.,\/]/g, ""); 
             
             let condition = "1=1";
+            let aiLimit = "1000";
+            let aiOrder = "DESC";
+            
+            let limitMatch = generatedSql.match(/limit\s+(\d+)/i);
+            if (limitMatch) aiLimit = limitMatch[1];
+            
+            let orderMatch = generatedSql.match(/order by start_ms (asc|desc)/i);
+            if (orderMatch) aiOrder = orderMatch[1].toUpperCase();
+
             let whereMatch = generatedSql.match(/where\s+(.*)/i);
             if (whereMatch) {
                 condition = whereMatch[1].replace(/order by.*/i, "").replace(/limit.*/i, "").trim();
             }
             
-            generatedSql = `SELECT * FROM video_segments WHERE ${condition} ORDER BY start_ms DESC LIMIT 1000`;
+            generatedSql = `SELECT * FROM video_segments WHERE ${condition} ORDER BY start_ms ${aiOrder} LIMIT ${aiLimit}`;
             return generatedSql;
         }
     } catch (err) {
@@ -558,12 +567,21 @@ Example output: SELECT * FROM video_segments WHERE detections ILIKE '%zone_breac
             generatedSql = generatedSql.replace(/[^a-zA-Z0-9_()=<>'\s%\*\+\-\.,\/]/g, ""); 
             
             let condition = "1=1";
+            let aiLimit = "1000";
+            let aiOrder = "DESC";
+            
+            let limitMatch = generatedSql.match(/limit\s+(\d+)/i);
+            if (limitMatch) aiLimit = limitMatch[1];
+            
+            let orderMatch = generatedSql.match(/order by start_ms (asc|desc)/i);
+            if (orderMatch) aiOrder = orderMatch[1].toUpperCase();
+
             let whereMatch = generatedSql.match(/where\s+(.*)/i);
             if (whereMatch) {
                 condition = whereMatch[1].replace(/order by.*/i, "").replace(/limit.*/i, "").trim();
             }
             
-            generatedSql = `SELECT * FROM video_segments WHERE ${condition} ORDER BY start_ms DESC LIMIT 1000`;
+            generatedSql = `SELECT * FROM video_segments WHERE ${condition} ORDER BY start_ms ${aiOrder} LIMIT ${aiLimit}`;
             return generatedSql;
         } catch (err) {
             log(`Gemini Nano error: ${err.message}`, "warning");
