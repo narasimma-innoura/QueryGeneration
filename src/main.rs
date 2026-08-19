@@ -42,7 +42,7 @@ const RUSTFS_MOUNT: &str = "rustfs_mount/";
 const PARQUET_LEDGER_PATH: &str = "output/rustfs_manifest.parquet";
 
 /// SQL allowlist: only DuckDB-safe operations permitted (anti-injection)
-const SQL_ALLOWLIST_PATTERN: &str = r"^SELECT\s+[a-zA-Z0-9_,\s*]+FROM\s+[a-zA-Z0-9_]+\s*(WHERE\s+[a-zA-Z0-9_()=<>'\s%]+)?$";
+const SQL_ALLOWLIST_PATTERN: &str = r"^SELECT\s+[a-zA-Z0-9_,\s*]+FROM\s+[a-zA-Z0-9_]+\s*(WHERE\s+[a-zA-Z0-9_(),=<>'\s%:-]+)?$";
 
 /// Inventory manifest path
 const INVENTORY_MANIFEST: &str = "output/rustfs_inventory_manifest.json";

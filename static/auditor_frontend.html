@@ -482,38 +482,79 @@ function quickHash(str) {
 
 const GEMINI_NANO_SYSTEM_PROMPT = `You are a SQL query generator for a workplace safety/hazard video monitoring system (PPE compliance monitoring only). Convert natural language questions to DuckDB SQL targeting the 'video_segments' table, which stores recorded camera footage with AI-detected PPE items — there is no user/account/vehicle-registry data of any kind in this system, only footage and what was detected in it.
 
-Available columns: camera_id (text), start_ms (bigint), end_ms (bigint), duration_ms (int), s3_key (text), size_bytes (bigint), detections (text — a JSON blob of detected items), complete (boolean — whether the recording finished normally).
+Available columns: camera_id (text), start_ms (bigint), end_ms (bigint), duration_ms (int), s3_key (text), size_bytes (bigint), detections (text — a JSON blob of detected items), complete (boolean — whether the recording finished normally), created_at (timestamp with time zone), analytics_synced_at (timestamp with time zone).
 
 The detections JSON carries exactly one kind of real signal (verified directly against the production database — every label below has real matching rows, and no other label or event-category token exists anywhere in this data, so never invent one):
 
 Per-object labels: person, helmet, no_helmet, vest, no_vest, gloves, no_gloves, goggles, no_goggles, shoes, no_shoes, fire, smoke. "no_<item>" means that PPE item was required but not detected (a violation).
+Active AI model types: HELMET_DETECTION, VEST_DETECTION, SAFETY_SHOES_DETECTION, SAFETY_GOGGLES_DETECTION, GLOVES_DETECTION.
 
 This system does NOT track falls, mask compliance, entry/exit, access control, driver drowsiness, mobile phone use, seat belt compliance, trucks, cars, or generic "breach" events — none of those concepts exist in this data. If asked about one of these, do not invent a filter for it (see rule 8).
 
 Rules:
 1. Only output the SQL query string, nothing else
 2. Always use SELECT * FROM video_segments WHERE 1=1 as the base (the WHERE clause is mandatory even with no real filter — this is a grammar requirement of the backend, not a stylistic choice)
-3. For timestamp ranges, append AND start_ms >= X AND end_ms <= Y (start_ms/end_ms are millisecond Unix epoch timestamps, e.g. ~1786942455587 — a real range looks like that, not small numbers like 1000-5000)
-4. For a PPE violation (missing helmet/vest/gloves/goggles/shoes), append AND detections ILIKE '%no_<item>%' (e.g. '%no_helmet%')
-5. For a PPE item being worn compliantly, append AND detections ILIKE '%<item>%' AND detections NOT ILIKE '%no_<item>%' (the NOT ILIKE matters — "helmet" alone is a substring of "no_helmet" and would match violations too without it)
-6. For a general "any PPE violation/hazard/unsafe/non-compliant" request naming no specific item, append AND detections ILIKE '%no_%' (every PPE violation label starts with "no_")
-7. For fire or smoke, append AND detections ILIKE '%fire%' or '%smoke%' (these exist in the data but are extremely rare — a handful of rows total)
-8. Never invent an ILIKE filter for a word that isn't a label above (e.g. "users", "active", "login", "truck", "fall", "seatbelt", "phone", "mask", "drowsy") — those never match anything in this data. If the request is only about a concept this system doesn't track, leave the base WHERE 1=1 with no AND conditions added rather than guessing a filter that is guaranteed to return zero rows
-9. If the request does not name a detection, item, or timestamp range, leave the base WHERE 1=1 with no AND conditions added — do not guess a filter just to have one
-10. Always end with ORDER BY start_ms DESC LIMIT 100
-11. No markdown, no explanations
+3. For camera ID queries, append AND camera_id = 'X' (e.g. camera_id = 'cam_01' or 'b2dd059d-1ab8-4033-a9e4-d9405a79eb9a')
+4. For relative date & timing filtering:
+   - today -> AND created_at >= CURRENT_DATE
+   - yesterday -> AND created_at >= CURRENT_DATE - INTERVAL '1 day' AND created_at < CURRENT_DATE
+   - the day before / day before yesterday -> AND created_at >= CURRENT_DATE - INTERVAL '2 days' AND created_at < CURRENT_DATE - INTERVAL '1 day'
+   - last 1 hour / last hour -> AND created_at >= NOW() - INTERVAL '1 hour'
+   - last 24 hrs / last 24 hours / last day -> AND created_at >= NOW() - INTERVAL '1 day'
+   - last week -> AND created_at >= NOW() - INTERVAL '7 days'
+   - all timing / all time -> do not add any date condition.
+   - For specific date ranges/timestamps: AND created_at >= '2026-08-17 04:00:00' AND created_at <= '2026-08-17 05:00:00'. For epoch integers: start_ms/end_ms.
+5. For a PPE violation (missing helmet/vest/gloves/goggles/shoes), append AND detections ILIKE '%no_<item>%' (e.g. '%no_helmet%')
+6. For a PPE item being worn compliantly, append AND detections ILIKE '%<item>%' AND detections NOT ILIKE '%no_<item>%' (the NOT ILIKE matters — "helmet" alone is a substring of "no_helmet" and would match violations too without it)
+7. For a general "any PPE violation/hazard/unsafe/non-compliant" request naming no specific item, append AND detections ILIKE '%no_%' (every PPE violation label starts with "no_")
+8. For specific AI detector models, append AND detections ILIKE '%<MODEL_TYPE>%' (e.g. '%HELMET_DETECTION%', '%SAFETY_GOGGLES_DETECTION%')
+9. For fire or smoke, append AND detections ILIKE '%fire%' or '%smoke%' (these exist in the data but are extremely rare — a handful of rows total)
+10. Never invent an ILIKE filter for a word that isn't a label above (e.g. "users", "active", "login", "truck", "fall", "seatbelt", "phone", "mask", "drowsy") — those never match anything in this data. If the request is only about a concept this system doesn't track, leave the base WHERE 1=1 with no AND conditions added rather than guessing a filter that is guaranteed to return zero rows
+11. If the request does not name a detection, item, or timestamp range, leave the base WHERE 1=1 with no AND conditions added — do not guess a filter just to have one
+12. Always end with ORDER BY start_ms DESC LIMIT 100
+13. No markdown, no explanations
 
 Example input: "Show workers not wearing a helmet"
 Example output: SELECT * FROM video_segments WHERE 1=1 AND detections ILIKE '%no_helmet%' ORDER BY start_ms DESC LIMIT 100
 
-Example input: "Show segments with any safety violation"
-Example output: SELECT * FROM video_segments WHERE 1=1 AND detections ILIKE '%no_%' ORDER BY start_ms DESC LIMIT 100
+Example input: "Show safety violations from today"
+Example output: SELECT * FROM video_segments WHERE 1=1 AND detections ILIKE '%no_%' AND created_at >= CURRENT_DATE ORDER BY start_ms DESC LIMIT 100
 
-Example input: "Show workers wearing a helmet correctly"
-Example output: SELECT * FROM video_segments WHERE 1=1 AND detections ILIKE '%helmet%' AND detections NOT ILIKE '%no_helmet%' ORDER BY start_ms DESC LIMIT 100
+Example input: "Show missing helmets from yesterday"
+Example output: SELECT * FROM video_segments WHERE 1=1 AND detections ILIKE '%no_helmet%' AND created_at >= CURRENT_DATE - INTERVAL '1 day' AND created_at < CURRENT_DATE ORDER BY start_ms DESC LIMIT 100
 
-Example input: "Show footage between timestamp 1786942000000 and 1786943000000"
-Example output: SELECT * FROM video_segments WHERE 1=1 AND start_ms >= 1786942000000 AND end_ms <= 1786943000000 ORDER BY start_ms DESC LIMIT 100
+Example input: "Show footage from the day before"
+Example output: SELECT * FROM video_segments WHERE 1=1 AND created_at >= CURRENT_DATE - INTERVAL '2 days' AND created_at < CURRENT_DATE - INTERVAL '1 day' ORDER BY start_ms DESC LIMIT 100
+
+Example input: "Show footage from last 1 hour"
+Example output: SELECT * FROM video_segments WHERE 1=1 AND created_at >= NOW() - INTERVAL '1 hour' ORDER BY start_ms DESC LIMIT 100
+
+Example input: "Show footage from last 24 hrs"
+Example output: SELECT * FROM video_segments WHERE 1=1 AND created_at >= NOW() - INTERVAL '1 day' ORDER BY start_ms DESC LIMIT 100
+
+Example input: "Show footage processed by HELMET_DETECTION model"
+Example output: SELECT * FROM video_segments WHERE 1=1 AND detections ILIKE '%HELMET_DETECTION%' ORDER BY start_ms DESC LIMIT 100
+
+Example input: "Show footage processed by VEST_DETECTION model"
+Example output: SELECT * FROM video_segments WHERE 1=1 AND detections ILIKE '%VEST_DETECTION%' ORDER BY start_ms DESC LIMIT 100
+
+Example input: "Show footage processed by SAFETY_SHOES_DETECTION model"
+Example output: SELECT * FROM video_segments WHERE 1=1 AND detections ILIKE '%SAFETY_SHOES_DETECTION%' ORDER BY start_ms DESC LIMIT 100
+
+Example input: "Show footage processed by SAFETY_GOGGLES_DETECTION model"
+Example output: SELECT * FROM video_segments WHERE 1=1 AND detections ILIKE '%SAFETY_GOGGLES_DETECTION%' ORDER BY start_ms DESC LIMIT 100
+
+Example input: "Show footage processed by GLOVES_DETECTION model"
+Example output: SELECT * FROM video_segments WHERE 1=1 AND detections ILIKE '%GLOVES_DETECTION%' ORDER BY start_ms DESC LIMIT 100
+
+Example input: "Show all timing footage"
+Example output: SELECT * FROM video_segments WHERE 1=1 ORDER BY start_ms DESC LIMIT 100
+
+Example input: "Show helmet violations for all timing"
+Example output: SELECT * FROM video_segments WHERE 1=1 AND detections ILIKE '%no_helmet%' ORDER BY start_ms DESC LIMIT 100
+
+Example input: "Show all timing segments for camera cam_01"
+Example output: SELECT * FROM video_segments WHERE 1=1 AND camera_id = 'cam_01' ORDER BY start_ms DESC LIMIT 100
 
 Example input: "Show missing safety goggles"
 Example output: SELECT * FROM video_segments WHERE 1=1 AND detections ILIKE '%no_goggles%' ORDER BY start_ms DESC LIMIT 100
@@ -529,7 +570,7 @@ Example output: SELECT * FROM video_segments WHERE 1=1 ORDER BY start_ms DESC LI
 // on-device model will occasionally hallucinate a column or invent a token
 // (e.g. "truck", "user") despite the prompt instructions, and that shouldn't
 // silently reach the backend as a wrong-but-well-formed query.
-const KNOWN_COLUMNS = ["camera_id", "start_ms", "end_ms", "duration_ms", "s3_key", "size_bytes", "detections", "complete"];
+const KNOWN_COLUMNS = ["camera_id", "start_ms", "end_ms", "duration_ms", "s3_key", "size_bytes", "detections", "complete", "created_at", "analytics_synced_at"];
 // Verified directly against production data (see conversation history) — these
 // are the ONLY labels that ever appear in the detections JSON. Tokens like
 // FALL_DETECTION/SEAT_BELT_COMPLIANCE/etc. were previously taught to the model
@@ -539,6 +580,7 @@ const KNOWN_COLUMNS = ["camera_id", "start_ms", "end_ms", "duration_ms", "s3_key
 const KNOWN_DETECTION_TOKENS = [
     "person", "helmet", "no_helmet", "vest", "no_vest", "gloves", "no_gloves",
     "goggles", "no_goggles", "shoes", "no_shoes", "fire", "smoke", "no_",
+    "HELMET_DETECTION", "VEST_DETECTION", "SAFETY_SHOES_DETECTION", "SAFETY_GOGGLES_DETECTION", "GLOVES_DETECTION",
 ];
 
 // Reject SQL that doesn't match the shape the backend allowlist and this
@@ -559,6 +601,9 @@ function isValidGeneratedSql(sql) {
     const allowedKeywords = new Set([
         "SELECT", "FROM", "WHERE", "AND", "OR", "ORDER", "BY", "LIMIT", "DESC", "ASC",
         "ILIKE", "LIKE", "NOT", "video_segments", "true", "false", "TRUE", "FALSE",
+        "CURRENT_DATE", "CURRENT_TIMESTAMP", "NOW", "INTERVAL", "DATE_TRUNC",
+        "minute", "minutes", "hour", "hours", "day", "days", "week", "weeks", "month", "months",
+        "MINUTE", "MINUTES", "HOUR", "HOURS", "DAY", "DAYS", "WEEK", "WEEKS", "MONTH", "MONTHS",
     ]);
     for (const id of identifiers) {
         if (allowedKeywords.has(id) || KNOWN_COLUMNS.includes(id)) continue;
@@ -707,10 +752,76 @@ function fallbackSqlGeneration(question) {
         sql += " AND detections ILIKE '%smoke%'";
     }
 
-    // Detect timestamp ranges
-    const tsMatch = q.match(/(\d+)\s*(?:to|and)\s*(\d+)/);
-    if (tsMatch) {
-        sql += ` AND start_ms >= ${parseInt(tsMatch[1])} AND end_ms <= ${parseInt(tsMatch[2])}`;
+    // Detect camera ID (e.g. camera cam_01, cam_01, or UUID)
+    const camMatch = q.match(/camera\s+([a-zA-Z0-9_-]+)/) || q.match(/\b(cam_[a-zA-Z0-9_-]+)\b/);
+    if (camMatch) {
+        sql += ` AND camera_id = '${camMatch[1]}'`;
+    }
+
+    // AI model type detector queries
+    const modelTypes = {
+        "helmet_detection": "HELMET_DETECTION",
+        "vest_detection": "VEST_DETECTION",
+        "shoes_detection": "SAFETY_SHOES_DETECTION",
+        "safety_shoes_detection": "SAFETY_SHOES_DETECTION",
+        "goggles_detection": "SAFETY_GOGGLES_DETECTION",
+        "safety_goggles_detection": "SAFETY_GOGGLES_DETECTION",
+        "gloves_detection": "GLOVES_DETECTION",
+    };
+    for (const [key, val] of Object.entries(modelTypes)) {
+        if (q.includes(key)) {
+            sql += ` AND detections ILIKE '%${val}%'`;
+            break;
+        }
+    }
+
+    // Detect relative date keywords (today, yesterday, the day before, last 1 hour, last 24 hrs, this week, this month, etc.)
+    if (/\b(all timing|all time|any time|full timeline|all video)\b/i.test(q)) {
+        // "all timing" explicitly requests no date restriction — skip all date logic
+    } else if (/\b(day before yesterday|the day before|2 days ago)\b/i.test(q)) {
+        sql += " AND created_at >= CURRENT_DATE - INTERVAL '2 days' AND created_at < CURRENT_DATE - INTERVAL '1 day'";
+    } else if (/\b(today)\b/i.test(q)) {
+        sql += " AND created_at >= CURRENT_DATE";
+    } else if (/\b(yesterday)\b/i.test(q)) {
+        sql += " AND created_at >= CURRENT_DATE - INTERVAL '1 day' AND created_at < CURRENT_DATE";
+    } else if (/\b(last day|past day|last 24\s*h(ours)?|past 24\s*h(ours)?|24 hrs|24 hours)\b/i.test(q)) {
+        sql += " AND created_at >= NOW() - INTERVAL '1 day'";
+    } else if (/\b(last (1\s*)?hour|past (1\s*)?hour|1 hour)\b/i.test(q)) {
+        sql += " AND created_at >= NOW() - INTERVAL '1 hour'";
+    } else if (/\b(last 12\s*h(ours)?|past 12\s*h(ours)?|12 hrs|12 hours)\b/i.test(q)) {
+        sql += " AND created_at >= NOW() - INTERVAL '12 hours'";
+    } else if (/\b(last 3\s*days?|past 3\s*days?|3 days ago)\b/i.test(q)) {
+        sql += " AND created_at >= NOW() - INTERVAL '3 days'";
+    } else if (/\b(this week|current week|last week|past week)\b/i.test(q)) {
+        sql += " AND created_at >= NOW() - INTERVAL '7 days'";
+    } else if (/\b(this month|current month|last month|past month)\b/i.test(q)) {
+        sql += " AND created_at >= NOW() - INTERVAL '30 days'";
+    } else if (/\b(last 15\s*m(ins|inutes)?|last 30\s*m(ins|inutes)?|recent|just now)\b/i.test(q)) {
+        sql += " AND created_at >= NOW() - INTERVAL '30 minutes'";
+    } else {
+        // Detect date or timestamp ranges (uses created_at for date strings, start_ms/end_ms for raw epoch numbers)
+        const dateRangeMatch = q.match(/between\s+([^\s]+(?:\s+[^\s]+)?)\s+(?:to|and)\s+([^\s]+(?:\s+[^\s]+)?)/i) || q.match(/(\d{10,13})\s*(?:to|and)\s*(\d{10,13})/);
+        if (dateRangeMatch) {
+            let t1 = dateRangeMatch[1].trim();
+            let t2 = dateRangeMatch[2].trim();
+            if (/^\d+$/.test(t1) && /^\d+$/.test(t2)) {
+                sql += ` AND start_ms >= ${parseInt(t1)} AND end_ms <= ${parseInt(t2)}`;
+            } else {
+                sql += ` AND created_at >= '${t1}' AND created_at <= '${t2}'`;
+            }
+        }
+
+        // Detect "after" / "above" / "since" date filtering using created_at
+        const afterMatch = q.match(/(?:after|above|since|greater than|from)\s+([0-9]{4}-[0-9]{2}-[0-9]{2}(?:\s+[0-9]{2}:[0-9]{2}:[0-9]{2})?)/i);
+        if (afterMatch && !dateRangeMatch) {
+            sql += ` AND created_at >= '${afterMatch[1].trim()}'`;
+        }
+
+        // Detect "before" / "below" / "until" date filtering using created_at
+        const beforeMatch = q.match(/(?:before|below|until|less than)\s+([0-9]{4}-[0-9]{2}-[0-9]{2}(?:\s+[0-9]{2}:[0-9]{2}:[0-9]{2})?)/i);
+        if (beforeMatch && !dateRangeMatch) {
+            sql += ` AND created_at <= '${beforeMatch[1].trim()}'`;
+        }
     }
 
     // Add ORDER BY and LIMIT to fetch newest rows and prevent crashing

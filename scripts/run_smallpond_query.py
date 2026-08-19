@@ -41,17 +41,21 @@ MAX_QUERY_LENGTH = 5000
 
 # Allowed table names (whitelist, case-insensitive)
 ALLOWED_TABLES = {
-    'rustfs_inventory',
-    'rustfs_manifest',
-    'media_pairs',
     'video_segments',
-    'vtt_overlays',
 }
 
 # Allowed column names
 ALLOWED_COLUMNS = {
-    'video_id', 'start_ts', 'end_ts', 'video_segment_url', 'zstd_vtt_url',
-    'object_type', 'breach_detected', 'timestamp', 'camera_id',
+    'camera_id',
+    'start_ms',
+    'end_ms',
+    'duration_ms',
+    's3_key',
+    'size_bytes',
+    'detections',
+    'complete',
+    'created_at',
+    'analytics_synced_at',
 }
 
 # Parquet ledger path
@@ -93,7 +97,7 @@ class QueryValidator:
         
         # Step 1: SQL Injection prevention (secondary validation)
         # This must perfectly match the Lean 4 proven Rust regex
-        ALLOWLIST_PATTERN = r"^SELECT\s+[a-zA-Z0-9_,\s*]+FROM\s+[a-zA-Z0-9_]+\s*(WHERE\s+[a-zA-Z0-9_()=<>'\s%]+)?$"
+        ALLOWLIST_PATTERN = r"^SELECT\s+[a-zA-Z0-9_,\s*]+FROM\s+[a-zA-Z0-9_]+\s*(WHERE\s+[a-zA-Z0-9_(),=<>'\s%:-]+)?$"
         if not re.match(ALLOWLIST_PATTERN, query, re.IGNORECASE):
             return False, "Query does not match allowlist pattern: SELECT ... FROM ... [WHERE ...]"
         
@@ -118,7 +122,7 @@ class QueryValidator:
                 columns = [c.strip() for c in columns_str.split(',')]
                 for col in columns:
                     # Remove aliases (e.g., "col as alias")
-                    base_col = col.split()[0]
+                    base_col = col.split()[0].lower()
                     if base_col not in ALLOWED_COLUMNS and base_col != '*':
                         return False, f"Column '{base_col}' not in whitelist: {ALLOWED_COLUMNS}"
         
