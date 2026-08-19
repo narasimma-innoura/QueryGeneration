@@ -51,7 +51,7 @@ ALLOWED_TABLES = {
 # Allowed column names
 ALLOWED_COLUMNS = {
     'video_id', 'start_ts', 'end_ts', 'video_segment_url', 'zstd_vtt_url',
-    'object_type', 'breach_detected', 'timestamp', 'camera_id',
+    'object_type', 'breach_detected', 'timestamp', 'camera_id', 'detections',
 }
 
 # Parquet ledger path
@@ -235,8 +235,8 @@ def execute_query_safe(query: str) -> Dict[str, Any]:
         
         # Inject PostgreSQL JSONB operators to eliminate TOAST table scans
         if "video_segments" in query.lower():
-            # First, rewrite `SELECT *` to only fetch the scalar columns we need (saves 20s of disk IO)
-            exec_query = re.sub(r'SELECT\s+\*\s+FROM', 'SELECT camera_id, start_ms, end_ms, s3_key FROM', query, flags=re.IGNORECASE)
+            # First, rewrite `SELECT *` to fetch the columns we need including detections JSONB
+            exec_query = re.sub(r'SELECT\s+\*\s+FROM', 'SELECT camera_id, start_ms, end_ms, s3_key, detections FROM', query, flags=re.IGNORECASE)
             
             # Then, rewrite the slow ILIKE to a hyper-fast JSONB structural containment check (@>)
             # This matches the schema: {"frames": [{"boxes": [{"label": "keyword"}]}]}
@@ -264,6 +264,7 @@ def execute_query_safe(query: str) -> Dict[str, Any]:
                     "video_id": d.get("camera_id"),
                     "start_ts": d.get("start_ms"),
                     "end_ts": d.get("end_ms"),
+                    "detections": d.get("detections"),
                 }
                 if "s3_key" in d:
                     base_url = "http://54.204.98.59:10011/visionguard-playback/"

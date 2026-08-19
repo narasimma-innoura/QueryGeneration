@@ -237,12 +237,23 @@
             border-radius: 4px;
             overflow: hidden;
             margin-bottom: 15px;
+            position: relative;
         }
 
         video {
             width: 100%;
             height: auto;
             display: block;
+        }
+
+        #bboxCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
         }
 
         .player-controls {
@@ -413,9 +424,17 @@
                 <video id="videoPlayer" controls style="width: 100%; height: auto; max-height: 400px; background: #000;">
                     Your browser does not support the HTML5 video tag.
                 </video>
+                <canvas id="bboxCanvas"></canvas>
             </div>
             <div class="player-controls">
-                <strong id="playerTitle">Ready</strong>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <strong id="playerTitle">Ready</strong>
+                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: #00d4ff; font-size: 12px; font-weight: 500;">
+                        <input type="checkbox" id="toggleBbox" checked onchange="renderBboxFrame()">
+                        🎯 BBox Overlay
+                        <span id="bboxCountBadge" style="font-size: 11px; background: #242430; padding: 2px 6px; border-radius: 3px; color: #00ff88; margin-left: 4px;">0 boxes</span>
+                    </label>
+                </div>
                 <p id="playerDetails" style="font-size: 12px; margin-top: 5px; color: #666;"></p>
             </div>
         </div>
@@ -724,6 +743,124 @@ function selectResult(idx) {
 
     // Route video request through the local Rust proxy to combine init.mp4 and bypass CORS
     videoPlayer.src = `${API_BASE}/proxy/video?url=${encodeURIComponent(item.video_segment_url)}`;
+
+    // Attach video playback handlers for bbox canvas animation
+    videoPlayer.onplay = startBboxLoop;
+    videoPlayer.ontimeupdate = renderBboxFrame;
+    videoPlayer.onseeked = renderBboxFrame;
+    setTimeout(renderBboxFrame, 100);
+}
+
+// ========================================================================
+// Bounding Box (BBox) Overlay Renderer
+// ========================================================================
+
+let bboxAnimationFrame = null;
+
+function startBboxLoop() {
+    if (bboxAnimationFrame) cancelAnimationFrame(bboxAnimationFrame);
+    
+    function loop() {
+        renderBboxFrame();
+        const video = document.getElementById("videoPlayer");
+        if (video && !video.paused && !video.ended) {
+            bboxAnimationFrame = requestAnimationFrame(loop);
+        }
+    }
+    loop();
+}
+
+function renderBboxFrame() {
+    const video = document.getElementById("videoPlayer");
+    const canvas = document.getElementById("bboxCanvas");
+    const toggle = document.getElementById("toggleBbox");
+    const badge = document.getElementById("bboxCountBadge");
+    
+    if (!video || !canvas) return;
+    
+    const ctx = canvas.getContext("2d");
+    
+    // Resize canvas to match video container dimensions
+    if (canvas.width !== video.clientWidth || canvas.height !== video.clientHeight) {
+        canvas.width = video.clientWidth;
+        canvas.height = video.clientHeight;
+    }
+    
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    if (!toggle || !toggle.checked) {
+        if (badge) badge.textContent = "overlay off";
+        return;
+    }
+    
+    if (selectedResult === null || !currentResults || !currentResults[selectedResult]) return;
+    const item = currentResults[selectedResult];
+    
+    if (!item.detections || !item.detections.frames || item.detections.frames.length === 0) {
+        if (badge) badge.textContent = "no bbox data";
+        return;
+    }
+    
+    const currentTime = video.currentTime;
+    
+    // Find nearest detection frame
+    let matchedFrame = null;
+    let minDiff = Infinity;
+    for (const frame of item.detections.frames) {
+        const diff = Math.abs(frame.t - currentTime);
+        if (diff < minDiff) {
+            minDiff = diff;
+            matchedFrame = frame;
+        }
+    }
+    
+    if (!matchedFrame || minDiff > 0.5 || !matchedFrame.boxes || matchedFrame.boxes.length === 0) {
+        if (badge) badge.textContent = "0 boxes";
+        return;
+    }
+    
+    const boxes = matchedFrame.boxes;
+    if (badge) badge.textContent = `${boxes.length} box${boxes.length === 1 ? '' : 'es'}`;
+    
+    const srcWidth = item.detections.width || video.videoWidth || canvas.width;
+    const srcHeight = item.detections.height || video.videoHeight || canvas.height;
+    
+    const scaleX = canvas.width / srcWidth;
+    const scaleY = canvas.height / srcHeight;
+    
+    for (const box of boxes) {
+        if (!box.bbox || box.bbox.length < 4) continue;
+        
+        const x1 = box.bbox[0] * scaleX;
+        const y1 = box.bbox[1] * scaleY;
+        const x2 = box.bbox[2] * scaleX;
+        const y2 = box.bbox[3] * scaleY;
+        const w = x2 - x1;
+        const h = y2 - y1;
+        
+        const boxColor = box.color || '#00d4ff';
+        
+        // Draw rectangle boundary
+        ctx.strokeStyle = boxColor;
+        ctx.lineWidth = 3;
+        ctx.strokeRect(x1, y1, w, h);
+        
+        // Semi-transparent box fill
+        ctx.fillStyle = boxColor.startsWith('#') ? boxColor + '22' : 'rgba(0, 212, 255, 0.15)';
+        ctx.fillRect(x1, y1, w, h);
+        
+        // Label badge
+        const labelText = `${(box.label || 'object').toUpperCase()} ${Math.round((box.score || 0) * 100)}%`;
+        ctx.font = "bold 11px sans-serif";
+        const textWidth = ctx.measureText(labelText).width;
+        
+        const labelY = y1 > 18 ? y1 - 18 : y1;
+        ctx.fillStyle = boxColor;
+        ctx.fillRect(x1, labelY, textWidth + 8, 18);
+        
+        ctx.fillStyle = "#ffffff";
+        ctx.fillText(labelText, x1 + 4, labelY + 13);
+    }
 }
 
 function clearInput() {

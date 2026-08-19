@@ -68,6 +68,8 @@ struct MediaPair {
     end_ts: i64,
     video_segment_url: String,
     zstd_vtt_url: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    detections: Option<serde_json::Value>,
 }
 
 /// DecompressParams: validated client request
@@ -484,6 +486,7 @@ async fn sync_inventory(State(state): State<AppState>) -> Response {
                 end_ts: key.2,
                 video_segment_url: video_path,
                 zstd_vtt_url: overlay_path.clone(),
+                detections: None,
             });
         }
     }
