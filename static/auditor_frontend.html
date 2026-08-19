@@ -329,6 +329,7 @@
             }
         }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 <div class="container">
@@ -481,29 +482,33 @@ function quickHash(str) {
     return Math.abs(hash).toString(16).substring(0, 8).toUpperCase();
 }
 
-// ========================================================================
-// Gemini Nano Integration (Browser-Local NLU)
-// ========================================================================
-
 async function generateSqlWithGeminiNano(question) {
+    const isChartRequest = /chart|graph|plot|breakdown/i.test(question);
     const systemPrompt = `You are a SQL query generator. Convert natural language questions to PostgreSQL SQL targeting the 'video_segments' table.
 
 Available columns: camera_id (text), start_ms (bigint), end_ms (bigint), duration_ms (int), s3_key (text), size_bytes (bigint), detections (jsonb), complete (boolean).
 
 Database Schema Notes:
 - The 'detections' JSONB column contains ONLY these specific labels: 'zone_breach', 'no_helmet', 'no_gloves', 'no_goggles', 'no_shoes', 'no_vest', 'helmet', 'gloves', 'goggles', 'shoes', 'vest', 'person', 'fire', 'smoke'.
-- For text matching, you MUST use one of these exact labels like: ILIKE '%zone_breach%'
+- For matching detections, you MUST use the GIN-optimized JSON containment operator (@>) like this: detections @> '{"frames": [{"boxes": [{"label": "zone_breach"}]}]}'
 
 Rules:
 1. Only output the SQL query string, nothing else
-2. Always use SELECT * FROM video_segments
-3. Do NOT add timestamp filters (start_ms) unless the user explicitly asks for "today" or "last 24 hours". The videos are old, so a 24-hour filter will return 0 results!
-4. If they do ask for time, use: EXTRACT(EPOCH FROM NOW() - INTERVAL '1 day') * 1000
-5. Always order by start_ms DESC LIMIT 1000 (or LIMIT 1 if they ask for "last")
+2. For basic lists, use SELECT * FROM video_segments. For analytical questions (e.g., "on which date", "which camera"), you MUST put the grouping dimension in the SELECT clause before COUNT(*), and group by 1. Example: SELECT TO_TIMESTAMP(start_ms / 1000.0)::DATE AS date_val, COUNT(*) AS count FROM video_segments GROUP BY 1 ORDER BY count DESC
+3. To filter for a specific date (e.g. "August 8, 2026"), use: TO_TIMESTAMP(start_ms / 1000.0)::DATE = '2026-08-08'
+4. To filter for "today" or "last 24 hours", use: start_ms >= EXTRACT(EPOCH FROM NOW() - INTERVAL '1 day') * 1000
+5. Default to ORDER BY start_ms DESC LIMIT 1000 for lists, but DO NOT add a LIMIT clause for aggregations (just ORDER BY count DESC)
 6. No markdown, no explanations
+7. If the user asks about "alerts" generally (e.g., "on which date the alerts are high", "break down in bar chart", "all alerts"), DO NOT add a WHERE filter for detections. ONLY add a WHERE filter if they explicitly ask for a specific alert type (like "no goggles", "zone_breach", "truck").
 
-Example input: "Show zone detection alerts"
-Example output: SELECT * FROM video_segments WHERE detections ILIKE '%zone_breach%' ORDER BY start_ms DESC LIMIT 1000`;
+Example input 1: "Show zone breaches"
+Example output 1: SELECT * FROM video_segments WHERE detections @> '{"frames": [{"boxes": [{"label": "zone_breach"}]}]}' ORDER BY start_ms DESC LIMIT 1000
+
+Example input 2: "group of alert break down in bar chart"
+Example output 2: SELECT * FROM video_segments ORDER BY start_ms DESC LIMIT 1000
+
+Example input 3: "on which date the alerts are high"
+Example output 3: SELECT TO_TIMESTAMP(start_ms / 1000.0)::DATE AS date_val, COUNT(*) AS count FROM video_segments GROUP BY 1 ORDER BY count DESC`;
 
     // Attempt 1: Ollama with Gemma3 locally
     try {
@@ -522,17 +527,21 @@ Example output: SELECT * FROM video_segments WHERE detections ILIKE '%zone_breac
         if (response.ok) {
             const data = await response.json();
             let generatedSql = data.response.trim().replace(/```sql|```/g, "").replace(/;/g, "").replace(/\n/g, " ").trim();
-            // Aggressive sanitization and reconstruction to GUARANTEE passing Rust validation
-            generatedSql = generatedSql.replace(/::text/gi, "").replace(/::jsonb/gi, "").replace(/;/g, "");
-            generatedSql = generatedSql.replace(/[^a-zA-Z0-9_()=<>'\s%\*\+\-\.,\/]/g, ""); 
+            generatedSql = generatedSql.replace(/[^a-zA-Z0-9_()=<>'\s%\*\+\-\.,\/@\?:\$\[\]\"{}|]/g, ""); 
             
-            let condition = "1=1";
-            let whereMatch = generatedSql.match(/where\s+(.*)/i);
-            if (whereMatch) {
-                condition = whereMatch[1].replace(/order by.*/i, "").replace(/limit.*/i, "").trim();
+            if (isChartRequest) {
+                return generatedSql.replace("SELECT *", "SELECT detections");
             }
             
-            generatedSql = `SELECT * FROM video_segments WHERE ${condition} ORDER BY start_ms DESC LIMIT 1000`;
+            // For analytical grouping or explicit counts, trust the AI and return exactly what it generated
+            if (generatedSql.toUpperCase().includes("GROUP BY") || generatedSql.toUpperCase().includes("COUNT(*)")) {
+                return generatedSql;
+            }
+            
+            // For basic lists, enforce the standard limit
+            if (!/\bLIMIT\b/i.test(generatedSql)) {
+                generatedSql += " LIMIT 1000";
+            }
             return generatedSql;
         }
     } catch (err) {
@@ -554,16 +563,24 @@ Example output: SELECT * FROM video_segments WHERE detections ILIKE '%zone_breac
             const session = await aiFactory.create({ systemPrompt: systemPrompt });
             const result = await session.prompt(`Convert to SQL: "${question}"`);
             let generatedSql = result.trim().replace(/```sql|```/g, "").replace(/;/g, "").replace(/\n/g, " ").trim();
-            generatedSql = generatedSql.replace(/::text/gi, "").replace(/::jsonb/gi, "").replace(/;/g, "");
-            generatedSql = generatedSql.replace(/[^a-zA-Z0-9_()=<>'\s%\*\+\-\.,\/]/g, ""); 
+            generatedSql = generatedSql.replace(/[^a-zA-Z0-9_()=<>'\s%\*\+\-\.,\/@\?:\$\[\]\"{}|]/g, ""); 
             
-            let condition = "1=1";
-            let whereMatch = generatedSql.match(/where\s+(.*)/i);
-            if (whereMatch) {
-                condition = whereMatch[1].replace(/order by.*/i, "").replace(/limit.*/i, "").trim();
+            // Fix backend crashes for JSONB ILIKE by rewriting to proper GIN-optimized @>
+            generatedSql = generatedSql.replace(/detections(?:::text)?\s+(?:ILIKE|LIKE)\s+'%([a-zA-Z0-9_]+)%'?/gi, "detections @> '{\"frames\": [{\"boxes\": [{\"label\": \"$1\"}]}]}'");
+            
+            if (isChartRequest) {
+                return generatedSql.replace("SELECT *", "SELECT detections");
             }
             
-            generatedSql = `SELECT * FROM video_segments WHERE ${condition} ORDER BY start_ms DESC LIMIT 1000`;
+            // For analytical grouping or explicit counts, trust the AI and return exactly what it generated
+            if (generatedSql.toUpperCase().includes("GROUP BY") || generatedSql.toUpperCase().includes("COUNT(*)")) {
+                return generatedSql;
+            }
+            
+            // For basic lists, enforce the standard limit
+            if (!/\bLIMIT\b/i.test(generatedSql)) {
+                generatedSql += " LIMIT 1000";
+            }
             return generatedSql;
         } catch (err) {
             log(`Gemini Nano error: ${err.message}`, "warning");
@@ -580,18 +597,21 @@ function fallbackSqlGeneration(question) {
     let q = question.toLowerCase().replace(/[-_]/g, " ");
     
     let sql = "SELECT * FROM video_segments WHERE 1=1";
+    if (q.includes("count") || q.includes("how many")) {
+        sql = "SELECT COUNT(*) FROM video_segments WHERE 1=1";
+    }
     
     // Detect safety compliance breaches
-    if (q.includes("breach") || q.includes("zone")) sql += " AND detections ILIKE '%zone_breach%'";
-    if (q.includes("no helmet")) sql += " AND detections ILIKE '%no_helmet%'";
-    if (q.includes("no glove")) sql += " AND detections ILIKE '%no_gloves%'";
-    if (q.includes("no goggle") || q.includes("no glass")) sql += " AND detections ILIKE '%no_goggles%'";
+    if (q.includes("breach") || q.includes("zone")) sql += " AND detections @? '$.frames[*].boxes[*] ? (@.label == \"zone_breach\")'";
+    if (q.includes("no helmet")) sql += " AND detections @? '$.frames[*].boxes[*] ? (@.label == \"no_helmet\")'";
+    if (q.includes("no glove")) sql += " AND detections @? '$.frames[*].boxes[*] ? (@.label == \"no_gloves\")'";
+    if (q.includes("no goggle") || q.includes("no glass") || q.includes("googles")) sql += " AND detections @? '$.frames[*].boxes[*] ? (@.label == \"no_goggles\")'";
     
     // Detect object type queries
-    if (q.includes("truck")) sql += " AND detections ILIKE '%truck%'";
-    else if (q.includes("person") || q.includes("worker")) sql += " AND detections ILIKE '%person%'";
-    else if (q.includes("car") || q.includes("vehicle")) sql += " AND detections ILIKE '%car%'";
-    else if (q.includes("vest")) sql += " AND detections ILIKE '%vest%'";
+    if (q.includes("truck")) sql += " AND detections @? '$.frames[*].boxes[*] ? (@.label == \"truck\")'";
+    else if (q.includes("person") || q.includes("worker")) sql += " AND detections @? '$.frames[*].boxes[*] ? (@.label == \"person\")'";
+    else if (q.includes("car") || q.includes("vehicle")) sql += " AND detections @? '$.frames[*].boxes[*] ? (@.label == \"car\")'";
+    else if (q.includes("vest")) sql += " AND detections @? '$.frames[*].boxes[*] ? (@.label == \"vest\")'";
     
     // Detect timestamp ranges
     const tsMatch = q.match(/(\d+)\s*(?:to|and)\s*(\d+)/);
@@ -600,7 +620,16 @@ function fallbackSqlGeneration(question) {
     }
     
     // Add ORDER BY and LIMIT to fetch newest rows and prevent crashing
-    sql += " ORDER BY start_ms DESC LIMIT 1000";
+    if (/chart|graph|plot|breakdown/i.test(question)) {
+        return sql.replace("SELECT *", "SELECT detections");
+    }
+    
+    // Add ORDER BY and LIMIT to fetch newest rows and prevent crashing
+    if (q.includes("last") || q.includes("latest")) {
+        sql += " ORDER BY start_ms DESC LIMIT 1";
+    } else {
+        sql += " ORDER BY start_ms DESC LIMIT 1000";
+    }
     
     return sql;
 }
@@ -611,6 +640,7 @@ function fallbackSqlGeneration(question) {
 
 async function runAuditSearch() {
     const textPrompt = document.getElementById("auditInput").value.trim();
+    const isChartRequest = /chart|graph|plot|breakdown/i.test(textPrompt);
     
     if (!textPrompt) {
         log("⚠️  Please enter a search query", "warning");
@@ -639,9 +669,9 @@ async function runAuditSearch() {
         const response = await fetch(`${API_BASE}/api/audit?sql_query=${encodeURIComponent(sqlQuery)}`);
         let data = await response.json();
         
-        // Limit to 100 items to prevent browser lag, but do NOT deduplicate by camera 
-        // so the user can see all consecutive segments of a safety breach
-        if (Array.isArray(data)) {
+        // Limit to 100 items to prevent browser lag for list views
+        // But preserve all data if we are building a chart!
+        if (Array.isArray(data) && !isChartRequest) {
             data = data.slice(0, 100);
         }
 
@@ -659,7 +689,75 @@ async function runAuditSearch() {
         log(`✓ Query completed in ${queryTime}ms | ${Array.isArray(data) ? data.length : (data.results ? data.results.length : 0)} results`);
 
         // Step 3: Display results
-        displayResults(Array.isArray(data) ? data : data.results || []);
+        let results = Array.isArray(data) ? data : data.results || [];
+        
+        if (isChartRequest) {
+            let counts = {};
+            results.forEach(item => {
+                // Handle directly-aggregated SQL queries that bypassed frontend logic
+                if (item.label && item.count !== undefined) {
+                    if (item.label !== 'person') {
+                        counts[item.label] = parseInt(item.count, 10);
+                    }
+                    return;
+                }
+                
+                // Fallback parsing for raw video segment records
+                if (item.detections && item.detections.frames) {
+                    item.detections.frames.forEach(frame => {
+                        if (frame.boxes) {
+                            frame.boxes.forEach(box => {
+                                const label = box.label;
+                                if (label !== 'person') {
+                                    counts[label] = (counts[label] || 0) + 1;
+                                }
+                            });
+                        }
+                    });
+                }
+            });
+            displayChart(counts, textPrompt);
+            document.getElementById("queryTime").textContent = queryTime;
+            document.getElementById("resultCount").textContent = results.length.toString();
+            document.getElementById("queryStatus").textContent = "success";
+            searchBtn.disabled = false;
+            searchBtn.textContent = "🚀 Execute Query";
+            return;
+        }
+
+        // Detect aggregate/summarized results
+        if (results.length > 0 && !("video_segment_url" in results[0]) && !isChartRequest) {
+            document.getElementById("resultsContainer").innerHTML = `<div class="empty-state"><h2>Generating summary...</h2></div>`;
+            
+            try {
+                const ollamaRes = await fetch("http://localhost:11434/api/generate", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        model: "gemma3:latest",
+                        prompt: `The user asked: "${textPrompt}". The database returned the following JSON result: ${JSON.stringify(results)}. Write a single, short, human-readable sentence summarizing this finding. Do not output anything else.`,
+                        stream: false
+                    })
+                });
+                
+                if (ollamaRes.ok) {
+                    const ollamaData = await ollamaRes.json();
+                    document.getElementById("resultsContainer").innerHTML = `<div class="empty-state"><h2>${ollamaData.response}</h2><p style="color:#666;">(Raw rows: ${results.length})</p></div>`;
+                } else {
+                    throw new Error("Ollama error");
+                }
+            } catch (e) {
+                // Fallback to displaying the raw aggregate results if AI summarization fails
+                displayResults(results);
+            }
+            
+            document.getElementById("queryTime").textContent = queryTime;
+            document.getElementById("resultCount").textContent = results.length.toString();
+            document.getElementById("queryStatus").textContent = "success";
+            return;
+        }
+
+        displayResults(results);
         document.getElementById("queryTime").textContent = queryTime;
         document.getElementById("resultCount").textContent = (Array.isArray(data) ? data.length : 0).toString();
         document.getElementById("queryStatus").textContent = "success";
@@ -672,6 +770,67 @@ async function runAuditSearch() {
         searchBtn.disabled = false;
         searchBtn.textContent = "🚀 Execute Query";
     }
+}
+
+
+let currentChart = null;
+function displayChart(counts, prompt = "") {
+    const container = document.getElementById("resultsContainer");
+    
+    if (Object.keys(counts).length === 0) {
+        container.innerHTML = `<div class="empty-state"><p>No detections found to chart.</p></div>`;
+        return;
+    }
+
+    container.innerHTML = `<canvas id="alertChart" width="400" height="200"></canvas>`;
+    const ctx = document.getElementById("alertChart").getContext("2d");
+    
+    if (currentChart) {
+        currentChart.destroy();
+    }
+    
+    const labels = Object.keys(counts);
+    const data = Object.values(counts);
+    
+    const isPie = /pie|pichart/i.test(prompt);
+    
+    const backgroundColors = isPie ? [
+        'rgba(255, 99, 132, 0.7)',
+        'rgba(54, 162, 235, 0.7)',
+        'rgba(255, 206, 86, 0.7)',
+        'rgba(75, 192, 192, 0.7)',
+        'rgba(153, 102, 255, 0.7)',
+        'rgba(255, 159, 64, 0.7)'
+    ] : 'rgba(54, 162, 235, 0.6)';
+    
+    const borderColors = isPie ? [
+        'rgba(255, 99, 132, 1)',
+        'rgba(54, 162, 235, 1)',
+        'rgba(255, 206, 86, 1)',
+        'rgba(75, 192, 192, 1)',
+        'rgba(153, 102, 255, 1)',
+        'rgba(255, 159, 64, 1)'
+    ] : 'rgba(54, 162, 235, 1)';
+    
+    let options = { responsive: true };
+    if (!isPie) {
+        options.scales = { y: { beginAtZero: true } };
+    }
+    
+    currentChart = new Chart(ctx, {
+        type: isPie ? 'pie' : 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Alert Breakdown',
+                data: data,
+                backgroundColor: backgroundColors,
+                borderColor: borderColors,
+                borderWidth: 1
+            }]
+        },
+        options: options
+    });
 }
 
 function displayResults(results) {
@@ -687,22 +846,35 @@ function displayResults(results) {
         return;
     }
 
-    container.innerHTML = results.map((item, idx) => `
-        <div class="result-item" onclick="selectResult(${idx})">
-            <div class="result-item-header">
-                <span>🎥 ${item.cameraName ? item.cameraName : item.video_id}</span>
-                <span style="font-size: 12px; color: #666;">Seg #${idx + 1}</span>
+    container.innerHTML = results.map((item, idx) => {
+        if (item.video_segment_url) {
+            return `
+            <div class="result-item" onclick="selectResult(${idx})">
+                <div class="result-item-header">
+                    <span>🎥 ${item.cameraName ? item.cameraName : item.video_id}</span>
+                    <span style="font-size: 12px; color: #666;">Seg #${idx + 1}</span>
+                </div>
+                <div class="result-item-details">
+                    <div>⏱️  <strong>Timestamp:</strong> ${new Date(Number(item.start_ts)).toLocaleString()} → ${new Date(Number(item.end_ts)).toLocaleTimeString()}</div>
+                </div>
+                <div class="result-item-urls">
+                    <a href="${item.video_segment_url}" title="Video segment (.ts)" target="_blank">📹 Video</a>
+                    <a href="${API_BASE}/decompress?file=${encodeURIComponent((item.zstd_vtt_url || '').split('/').pop())}" 
+                       title="Decompressed VTT overlay" target="_blank">📄 VTT</a>
+                </div>
             </div>
-            <div class="result-item-details">
-                <div>⏱️  <strong>Timestamp:</strong> ${new Date(Number(item.start_ts)).toLocaleString()} → ${new Date(Number(item.end_ts)).toLocaleTimeString()}</div>
+            `;
+        } else {
+            const details = Object.entries(item).map(([k, v]) => `<strong>${k}:</strong> ${v}`).join(' | ');
+            return `
+            <div class="result-item">
+                <div class="result-item-details">
+                    <div>📊 ${details}</div>
+                </div>
             </div>
-            <div class="result-item-urls">
-                <a href="${item.video_segment_url}" title="Video segment (.ts)" target="_blank">📹 Video</a>
-                <a href="${API_BASE}/decompress?file=${encodeURIComponent(item.zstd_vtt_url.split('/').pop())}" 
-                   title="Decompressed VTT overlay" target="_blank">📄 VTT</a>
-            </div>
-        </div>
-    `).join("");
+            `;
+        }
+    }).join("");
 }
 
 function selectResult(idx) {

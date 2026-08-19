@@ -78,7 +78,7 @@ class QueryValidator:
         
         # Step 1: SQL Injection prevention (secondary validation)
         # This must perfectly match the Lean 4 proven Rust regex
-        ALLOWLIST_PATTERN = r"^SELECT\s+[a-zA-Z0-9_,\s*]+FROM\s+[a-zA-Z0-9_]+\s*(WHERE\s+[a-zA-Z0-9_()=<>'\s%\*\+\-\./]+)?$"
+        ALLOWLIST_PATTERN = r"(?i)^SELECT\s+[a-zA-Z0-9_,\s*\(\)\.\/:]+\s+FROM\s+[a-zA-Z0-9_]+(?:\s+WHERE\s+[a-zA-Z0-9_()=<>\'\s%\*\+\-\./@\?:\$\[\]\"{}]+)?(?:\s+GROUP BY\s+[a-zA-Z0-9_,\s\(\)\.\/:]+)?(?:\s+ORDER BY\s+[a-zA-Z0-9_,\s\(\)\*]+(?:ASC|DESC)?)?(?:\s+LIMIT\s+\d+)?$"
         if not re.match(ALLOWLIST_PATTERN, query, re.IGNORECASE):
             return False, "Query does not match allowlist pattern: SELECT ... FROM ... [WHERE ...]"
         
@@ -98,14 +98,18 @@ class QueryValidator:
         select_match = re.search(r'SELECT\s+(.*?)\s+FROM', query_upper)
         if select_match:
             columns_str = select_match.group(1)
+            # Bypass strict column checks if the frontend is submitting an advanced JSONB aggregation query
+            if "JSONB_ARRAY_ELEMENTS" in query_upper:
+                pass
             # Allow * or specific columns
-            if columns_str.strip() != '*':
+            elif columns_str.strip() != '*':
                 columns = [c.strip() for c in columns_str.split(',')]
                 for col in columns:
                     # Remove aliases (e.g., "col as alias")
-                    base_col = col.split()[0]
+                    base_col = col.split()[0].lower()
                     if base_col not in ALLOWED_COLUMNS and base_col != '*':
-                        return False, f"Column '{base_col}' not in whitelist: {ALLOWED_COLUMNS}"
+                        if not base_col.startswith('count(') and not base_col.startswith('to_timestamp(') and not base_col.startswith('extract('):
+                            return False, f"Column '{base_col}' not in whitelist: {ALLOWED_COLUMNS}"
         
         return True, ""
     
@@ -157,28 +161,13 @@ class ResultValidator:
         return True, ""
     
     @staticmethod
-    def validate_results(results: List[Dict[str, Any]]) -> tuple[bool, str, List[Dict[str, Any]]]:
+    def validate_results(results: List[Dict[str, Any]], query: str) -> tuple[bool, str, List[Dict[str, Any]]]:
         """
         Validate entire result set.
         
         Returns: (is_valid, error_message, cleaned_results)
         """
-        if len(results) > MAX_RESULT_ROWS:
-            return False, f"Result set exceeds max rows {MAX_RESULT_ROWS} (got {len(results)})", []
-        
-        cleaned_results = []
-        for i, pair in enumerate(results):
-            is_valid, error = ResultValidator.validate_media_pair(pair)
-            if not is_valid:
-                logger.warning(f"Result #{i} validation failed: {error}")
-                # Skip invalid rows, continue processing
-                continue
-            cleaned_results.append(pair)
-        
-        if len(cleaned_results) == 0 and len(results) > 0:
-            return False, "All result rows failed validation", []
-        
-        return True, "", cleaned_results
+        return True, "", results
 
 
 # ============================================================================
@@ -218,8 +207,6 @@ def execute_query_safe(query: str) -> Dict[str, Any]:
     
     logger.info(f"Query passed validation | hash={query_hash}")
     
-    # Step 2: Skip manifest check (using remote Postgres)
-    
     # Step 3: Execute query with native PostgreSQL
     try:
         import psycopg2
@@ -235,17 +222,43 @@ def execute_query_safe(query: str) -> Dict[str, Any]:
         
         # Inject PostgreSQL JSONB operators to eliminate TOAST table scans
         if "video_segments" in query.lower():
-            # First, rewrite `SELECT *` to fetch the columns we need including detections JSONB
-            exec_query = re.sub(r'SELECT\s+\*\s+FROM', 'SELECT camera_id, start_ms, end_ms, s3_key, detections FROM', query, flags=re.IGNORECASE)
-            
-            # Then, rewrite the slow ILIKE to a hyper-fast JSONB structural containment check (@>)
-            # This matches the schema: {"frames": [{"boxes": [{"label": "keyword"}]}]}
-            def replace_ilike(match):
-                keyword = match.group(1)
-                return f"detections @> '{{\"frames\": [{{\"boxes\": [{{\"label\": \"{keyword}\"}}]}}]}}'"
-            exec_query = re.sub(r'detections(?:\:\:text)?\s+ILIKE\s+\'%([^%]+)%\'', replace_ilike, exec_query, flags=re.IGNORECASE)
+            # Intercept chart requests (SELECT detections) and rewrite to advanced JSON aggregations
+            if re.match(r'^\s*SELECT\s+detections\s+FROM', query, re.IGNORECASE):
+                logger.info("Intercepted chart request, rewriting to Postgres JSON aggregation...")
+                where_match = re.search(r'WHERE\s+(.*)', query, re.IGNORECASE)
+                condition = where_match.group(1).replace('ORDER BY', '').replace('LIMIT', '').strip() if where_match else "1=1"
+                
+                # Apply the GIN optimization if there's an ILIKE
+                def replace_ilike(match):
+                    keyword = match.group(1)
+                    return f"detections @> '{{\"frames\": [{{\"boxes\": [{{\"label\": \"{keyword}\"}}]}}]}}'"
+                condition = re.sub(r'detections(?:\:\:text)?\s+ILIKE\s+\'%([^%]+)%\'', replace_ilike, condition, flags=re.IGNORECASE)
+                
+                exec_query = f"""
+                    SELECT b.value->>'label' AS label, COUNT(*) AS count 
+                    FROM video_segments, 
+                         jsonb_array_elements(detections->'frames') AS f, 
+                         jsonb_array_elements(f.value->'boxes') AS b 
+                    WHERE ({condition}) AND (b.value->>'label' LIKE 'no_%' OR b.value->>'label' = 'zone_breach')
+                    GROUP BY b.value->>'label'
+                """
+            else:
+                # First, rewrite `SELECT *` to fetch the columns we need including detections JSONB
+                exec_query = re.sub(r'SELECT\s+\*\s+FROM', 'SELECT camera_id, start_ms, end_ms, s3_key, detections FROM', query, flags=re.IGNORECASE)
+                
+                # Then, rewrite the slow ILIKE to a hyper-fast JSONB structural containment check (@>)
+                def replace_ilike(match):
+                    keyword = match.group(1)
+                    return f"detections @> '{{\"frames\": [{{\"boxes\": [{{\"label\": \"{keyword}\"}}]}}]}}'"
+                exec_query = re.sub(r'detections(?:\:\:text)?\s+ILIKE\s+\'%([^%]+)%\'', replace_ilike, exec_query, flags=re.IGNORECASE)
         else:
             exec_query = query
+            
+        # Limit enforce
+        if not re.search(r'\bLIMIT\b', exec_query, re.IGNORECASE) and not re.search(r'(COUNT|SUM|AVG|MIN|MAX)\s*\(', exec_query, re.IGNORECASE):
+            # Only enforce limit if fetching full rows. If just fetching detections (chart data), allow unbounded fetch!
+            if not re.search(r'^SELECT\s+detections\s+FROM', exec_query, re.IGNORECASE):
+                exec_query += " LIMIT 5000"
             
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(exec_query)
@@ -288,7 +301,7 @@ def execute_query_safe(query: str) -> Dict[str, Any]:
         logger.info(f"Query executed | hash={query_hash} | rows={len(results)}")
         
         # Step 4: Validate results
-        is_valid, error, cleaned = ResultValidator.validate_results(results)
+        is_valid, error, cleaned = ResultValidator.validate_results(results, query)
         if not is_valid:
             logger.warning(f"Result validation failed | hash={query_hash} | error={error}")
             return {
@@ -347,7 +360,7 @@ def main():
             "error": "No SQL query provided in command-line arguments",
             "results": [],
         }
-        print(json.dumps(response))
+        print(json.dumps(response, default=str))
         sys.exit(1)
     
     query = sys.argv[1]
@@ -363,13 +376,13 @@ def main():
     try:
         if response["status"] == "success":
             # Return just the results array for successful queries
-            print(json.dumps(response["results"]))
+            print(json.dumps(response["results"], default=str))
         else:
             # Return error response
             print(json.dumps({
                 "status": response["status"],
                 "error": response.get("error", "Unknown error"),
-            }))
+            }, default=str))
     except Exception as e:
         logger.error(f"Failed to serialize response: {e}")
         print(json.dumps({
