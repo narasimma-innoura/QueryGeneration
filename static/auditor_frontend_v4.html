@@ -406,7 +406,22 @@
     <div class="layout" style="margin-bottom: 0;">
         <!-- Left: Results -->
         <div class="panel">
-            <h2>🎬 Matching Forensic Footage (v2)</h2>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h2 style="margin-bottom: 0;">🎬 Matching Forensic Footage (v2)</h2>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <label for="timezoneSelect" style="font-size: 12px; color: #00d4ff; font-weight: 500;">🌍 Timezone:</label>
+                    <select id="timezoneSelect" onchange="changeTimezone(this.value)" style="padding: 5px 10px; background: #141420; border: 1px solid #00d4ff; border-radius: 4px; color: #fff; font-size: 12px; cursor: pointer; outline: none;">
+                        <option value="local">Local Browser Time</option>
+                        <option value="UTC">UTC (Coordinated Universal)</option>
+                        <option value="Asia/Kolkata">IST (+05:30) Asia/Kolkata</option>
+                        <option value="America/New_York">EST/EDT (-05:00) New York</option>
+                        <option value="America/Los_Angeles">PST/PDT (-08:00) Los Angeles</option>
+                        <option value="Europe/London">GMT/BST (+00:00) London</option>
+                        <option value="Asia/Tokyo">JST (+09:00) Tokyo</option>
+                        <option value="Asia/Singapore">SGT (+08:00) Singapore</option>
+                    </select>
+                </div>
+            </div>
             <div class="results-container" id="resultsContainer">
                 <div class="empty-state">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -449,6 +464,42 @@
 const API_BASE = "http://localhost:8000";
 let selectedResult = null;
 let currentResults = [];
+let currentTimezone = "local";
+
+function changeTimezone(tz) {
+    currentTimezone = tz;
+    if (currentResults && currentResults.length > 0) {
+        displayResults(currentResults);
+        if (selectedResult !== null && currentResults[selectedResult]) {
+            const item = currentResults[selectedResult];
+            const startStr = formatTimestamp(item.start_ts, currentTimezone);
+            const endStr = formatTimestamp(item.end_ts, currentTimezone);
+            document.getElementById("playerTitle").textContent = `${item.video_id} (${startStr} → ${endStr})`;
+        }
+    }
+}
+
+function formatTimestamp(ts, timeZone) {
+    const num = Number(ts);
+    if (isNaN(num) || num <= 0) return ts;
+    const date = new Date(num);
+    
+    const options = {
+        year: 'numeric',
+        month: 'numeric',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+    };
+    
+    if (timeZone && timeZone !== 'local') {
+        options.timeZone = timeZone;
+    }
+    
+    return new Intl.DateTimeFormat('en-US', options).format(date);
+}
 
 // ========================================================================
 // Utility Functions
@@ -486,6 +537,11 @@ function quickHash(str) {
 // ========================================================================
 
 async function generateSqlWithGeminiNano(question) {
+    const trimmedInput = question.trim();
+    if (trimmedInput.toUpperCase().startsWith("SELECT")) {
+        return trimmedInput;
+    }
+
     const systemPrompt = `You are a SQL query generator. Convert natural language questions to PostgreSQL SQL targeting the 'video_segments' table.
 
 Available columns: camera_id (text), start_ms (bigint), end_ms (bigint), duration_ms (int), s3_key (text), size_bytes (bigint), detections (jsonb), complete (boolean).
@@ -705,14 +761,17 @@ function displayResults(results) {
         return;
     }
 
-    container.innerHTML = results.map((item, idx) => `
-        <div class="result-item" onclick="selectResult(${idx})">
+    container.innerHTML = results.map((item, idx) => {
+        const startStr = formatTimestamp(item.start_ts, currentTimezone);
+        const endStr = formatTimestamp(item.end_ts, currentTimezone);
+        return `
+        <div class="result-item ${selectedResult === idx ? 'selected' : ''}" onclick="selectResult(${idx})">
             <div class="result-item-header">
                 <span>🎥 ${item.cameraName ? item.cameraName : item.video_id}</span>
                 <span style="font-size: 12px; color: #666;">Seg #${idx + 1}</span>
             </div>
             <div class="result-item-details">
-                <div>⏱️  <strong>Timestamp:</strong> ${new Date(Number(item.start_ts)).toLocaleString()} → ${new Date(Number(item.end_ts)).toLocaleTimeString()}</div>
+                <div>⏱️  <strong>Timestamp:</strong> ${startStr} → ${endStr}</div>
             </div>
             <div class="result-item-urls">
                 <a href="${item.video_segment_url}" title="Video segment (.ts)" target="_blank">📹 Video</a>
@@ -720,7 +779,8 @@ function displayResults(results) {
                    title="Decompressed VTT overlay" target="_blank">📄 VTT</a>
             </div>
         </div>
-    `).join("");
+    `;
+    }).join("");
 }
 
 function selectResult(idx) {
@@ -736,9 +796,12 @@ function selectResult(idx) {
     const playerTitle = document.getElementById("playerTitle");
     const playerDetails = document.getElementById("playerDetails");
 
+    const startStr = formatTimestamp(item.start_ts, currentTimezone);
+    const endStr = formatTimestamp(item.end_ts, currentTimezone);
+
     playerPanel.style.visibility = "visible";
     playerPanel.style.opacity = "1";
-    playerTitle.textContent = `${item.video_id} (${item.start_ts}–${item.end_ts})`;
+    playerTitle.textContent = `${item.video_id} (${startStr} → ${endStr})`;
     
     // Generate init.mp4 URL from the same directory as the segment
     const initUrl = item.video_segment_url.substring(0, item.video_segment_url.lastIndexOf('/')) + '/init.mp4';
