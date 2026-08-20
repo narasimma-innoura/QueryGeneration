@@ -343,7 +343,8 @@ async fn execute_smallpond_audit(
     };
 
     // Step 2: Execute Smallpond subprocess with validated query
-    let output = std::process::Command::new("python3")
+    let python_bin = if cfg!(windows) { "python" } else { "python3" };
+    let output = std::process::Command::new(python_bin)
         .arg("scripts/run_smallpond_query.py")
         .arg(&validated_sql)
         .output();
