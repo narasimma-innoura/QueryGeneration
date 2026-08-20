@@ -329,6 +329,7 @@
             }
         }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 <div class="container">
@@ -559,7 +560,7 @@ Rules:
 6. No markdown, no explanations
 
 Example input: "Show zone detection alerts"
-Example output: SELECT * FROM video_segments WHERE detections ILIKE '%zone_breach%' ORDER BY start_ms DESC LIMIT 1000`;
+Example output: SELECT * FROM video_segments WHERE detections::text ILIKE '%zone_breach%' ORDER BY start_ms DESC LIMIT 1000`;
 
     // Attempt 1: Ollama with Gemma3 locally
     try {
@@ -579,8 +580,18 @@ Example output: SELECT * FROM video_segments WHERE detections ILIKE '%zone_breac
             const data = await response.json();
             let generatedSql = data.response.trim().replace(/```sql|```/g, "").replace(/;/g, "").replace(/\n/g, " ").trim();
             // Aggressive sanitization and reconstruction to GUARANTEE passing Rust validation
-            generatedSql = generatedSql.replace(/::text/gi, "").replace(/::jsonb/gi, "").replace(/;/g, "");
-            generatedSql = generatedSql.replace(/[^a-zA-Z0-9_()=<>'\s%\*\+\-\.,\/]/g, ""); 
+            
+            generatedSql = generatedSql.replace(/[^a-zA-Z0-9_()=<>'\s%\*\+\-\.,\/@\?:\[\]\$"{}|]/g, ""); 
+            
+            // Allow COUNT queries
+            if (generatedSql.toUpperCase().includes("COUNT(*)")) {
+                let condition = "1=1";
+                let whereMatch = generatedSql.match(/where\s+(.*)/i);
+                if (whereMatch) {
+                    condition = whereMatch[1].replace(/order by.*/i, "").replace(/limit.*/i, "").trim();
+                }
+                return ;
+            }
             
             let condition = "1=1";
             let aiLimit = "1000";
@@ -619,8 +630,8 @@ Example output: SELECT * FROM video_segments WHERE detections ILIKE '%zone_breac
             const session = await aiFactory.create({ systemPrompt: systemPrompt });
             const result = await session.prompt(`Convert to SQL: "${question}"`);
             let generatedSql = result.trim().replace(/```sql|```/g, "").replace(/;/g, "").replace(/\n/g, " ").trim();
-            generatedSql = generatedSql.replace(/::text/gi, "").replace(/::jsonb/gi, "").replace(/;/g, "");
-            generatedSql = generatedSql.replace(/[^a-zA-Z0-9_()=<>'\s%\*\+\-\.,\/]/g, ""); 
+            
+            generatedSql = generatedSql.replace(/[^a-zA-Z0-9_()=<>'\s%\*\+\-\.,\/@\?:\[\]\$"{}|]/g, ""); 
             
             let condition = "1=1";
             let aiLimit = "1000";
@@ -654,18 +665,21 @@ function fallbackSqlGeneration(question) {
     let q = question.toLowerCase().replace(/[-_]/g, " ");
     
     let sql = "SELECT * FROM video_segments WHERE 1=1";
+    if (q.includes("count") || q.includes("how many")) {
+        sql = "SELECT COUNT(*) FROM video_segments WHERE 1=1";
+    }
     
     // Detect safety compliance breaches
-    if (q.includes("breach") || q.includes("zone")) sql += " AND detections ILIKE '%zone_breach%'";
-    if (q.includes("no helmet")) sql += " AND detections ILIKE '%no_helmet%'";
-    if (q.includes("no glove")) sql += " AND detections ILIKE '%no_gloves%'";
-    if (q.includes("no goggle") || q.includes("no glass")) sql += " AND detections ILIKE '%no_goggles%'";
+    if (q.includes("breach") || q.includes("zone")) sql += " AND detections::text ILIKE '%zone_breach%'";
+    if (q.includes("no helmet")) sql += " AND detections::text ILIKE '%no_helmet%'";
+    if (q.includes("no glove")) sql += " AND detections::text ILIKE '%no_gloves%'";
+    if (q.includes("no goggle") || q.includes("no glass")) sql += " AND detections::text ILIKE '%no_goggles%'";
     
     // Detect object type queries
-    if (q.includes("truck")) sql += " AND detections ILIKE '%truck%'";
-    else if (q.includes("person") || q.includes("worker")) sql += " AND detections ILIKE '%person%'";
-    else if (q.includes("car") || q.includes("vehicle")) sql += " AND detections ILIKE '%car%'";
-    else if (q.includes("vest")) sql += " AND detections ILIKE '%vest%'";
+    if (q.includes("truck")) sql += " AND detections::text ILIKE '%truck%'";
+    else if (q.includes("person") || q.includes("worker")) sql += " AND detections::text ILIKE '%person%'";
+    else if (q.includes("car") || q.includes("vehicle")) sql += " AND detections::text ILIKE '%car%'";
+    else if (q.includes("vest")) sql += " AND detections::text ILIKE '%vest%'";
     
     // Detect timestamp ranges
     const tsMatch = q.match(/(\d+)\s*(?:to|and)\s*(\d+)/);
@@ -674,7 +688,11 @@ function fallbackSqlGeneration(question) {
     }
     
     // Add ORDER BY and LIMIT to fetch newest rows and prevent crashing
-    sql += " ORDER BY start_ms DESC LIMIT 1000";
+    if (q.includes("last") || q.includes("latest")) {
+        sql += " ORDER BY start_ms DESC LIMIT 1";
+    } else {
+        sql += " ORDER BY start_ms DESC LIMIT 1000";
+    }
     
     return sql;
 }
@@ -685,6 +703,7 @@ function fallbackSqlGeneration(question) {
 
 async function runAuditSearch() {
     const textPrompt = document.getElementById("auditInput").value.trim();
+    const isChartRequest = /chart|graph|plot|breakdown/i.test(textPrompt);
     
     if (!textPrompt) {
         log("⚠️  Please enter a search query", "warning");
@@ -746,6 +765,48 @@ async function runAuditSearch() {
         searchBtn.disabled = false;
         searchBtn.textContent = "🚀 Execute Query";
     }
+}
+
+
+let currentChart = null;
+function displayChart(counts) {
+    const container = document.getElementById("resultsContainer");
+    
+    if (Object.keys(counts).length === 0) {
+        container.innerHTML = `<div class="empty-state"><p>No detections found to chart.</p></div>`;
+        return;
+    }
+
+    container.innerHTML = `<canvas id="alertChart" width="400" height="200"></canvas>`;
+    const ctx = document.getElementById("alertChart").getContext("2d");
+    
+    if (currentChart) {
+        currentChart.destroy();
+    }
+    
+    const labels = Object.keys(counts);
+    const data = Object.values(counts);
+    
+    currentChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Alert Breakdown',
+                data: data,
+                backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
 }
 
 function displayResults(results) {
